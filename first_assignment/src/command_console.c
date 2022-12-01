@@ -1,10 +1,14 @@
 #include "./../include/command_utilities.h"
 #include <unistd.h>
+#include <fcntl.h>
+
 int fd;
 
 
 int Vx_m1; // inizialize the file descriptor of the pipe Vx
 int Vz_m2; // inizialize the file descriptor of the pipe Vz
+char *Vx = "/named_pipes/Vx"; // initialize the pipe Vx pathname
+char *Vz = "/named_pipes/Vz"; // initialize the pipe Vx pathname
 
 int main(int argc, char const *argv[])
 {
@@ -52,7 +56,7 @@ int main(int argc, char const *argv[])
                     refresh();
 
                     if(write(Vx_m1, 0, 1) != 1) { // writing the number 0 on the pipe (0= Vx--)
-                        perror('error tring to write on the Vx pipe from cmd (Vx--)') // checking errors
+                        perror('error tring to write on the Vx pipe from cmd (Vx--)'); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -63,7 +67,7 @@ int main(int argc, char const *argv[])
                     refresh();
 
                     if(write(Vx_m1, 2, 1) != 1) { // writing the number 2 on the pipe (2= Vx++)
-                        perror('error tring to write on the Vx pipe from cmd (Vx++)') // checking errors
+                        perror('error tring to write on the Vx pipe from cmd (Vx++)'); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -74,7 +78,7 @@ int main(int argc, char const *argv[])
                     refresh();
 
                     if(write(Vx_m1, 1, 1) != 1) { // writing the number 1 on the pipe (1= Vx=0)
-                        perror('error tring to write on the Vx pipe from cmd (Vx=0)') // checking errors
+                        perror('error tring to write on the Vx pipe from cmd (Vx=0)'); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -84,7 +88,7 @@ int main(int argc, char const *argv[])
                     mvprintw(LINES - 1, 1, "Vertical Speed Decreased");
                     refresh();
                     if(write(Vz_m2, 0, 1) != 1) { // writing the number 0 on the pipe (0= Vz--)
-                        perror('error tring to write on the Vz pipe from cmd (Vz--)') // checking errors
+                        perror('error tring to write on the Vz pipe from cmd (Vz--)'); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -94,7 +98,7 @@ int main(int argc, char const *argv[])
                     mvprintw(LINES - 1, 1, "Vertical Speed Increased");
                     refresh();
                     if(write(Vz_m2, 2, 1) != 1) { // writing the number 2 on the pipe (2= Vz++)
-                        perror('error tring to write on the Vz pipe from cmd (Vz++)') // checking errors
+                        perror('error tring to write on the Vz pipe from cmd (Vz++)'); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -104,7 +108,7 @@ int main(int argc, char const *argv[])
                     mvprintw(LINES - 1, 1, "Vertical Motor Stopped");
                     refresh();
                     if(write(Vz_m2, 1, 1) != 1) { // writing the number 1 on the pipe (1= Vz=0)
-                        perror('error tring to write on the Vz pipe from cmd (Vz=0)') // checking errors
+                        perror('error tring to write on the Vz pipe from cmd (Vz=0)'); // checking errors
                     }
                     sleep(1); // wait for one second
                 }

@@ -14,7 +14,6 @@ int mkpipe(const char *pathname, mode_t mode) { // function to create a named pi
   }
 }
 
-
 int spawn(const char * program, char * arg_list[]) {
 
   pid_t child_pid = fork();
@@ -35,13 +34,13 @@ int spawn(const char * program, char * arg_list[]) {
   }
 }
 
-
 int main() {
 
   // declering the mkpipe() arguments:
   // % from cmd to m1, m2:
   char *cmd_Vx_m1 = "./named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
   mode_t cmd_Vx_m1_mode = 0666; // mode of the pipe from cmd to m1 through Vx
+  
   char *cmd_Vz_m2 = "./named_pipes/Vz"; // pathname of the pipe from cmd to m2 through Vz
   mode_t cmd_Vz_m2_mode = 0666; // mode of the pipe from cmd to m2 through Vz
 
@@ -49,23 +48,33 @@ int main() {
   char *m1_x_ins = "./named_pipes/x"; // pathname of the pipe from m1 to inspect through x
   mode_t m1_x_ins_mode = 0666; // mode of the pipe from m1 to inspect through x
 
+  char *m2_z_ins = "./named_pipes/z"; // pathname of the pipe from m2 to inspect through z
+  mode_t m2_z_ins_mode = 0666; // mode of the pipe from m2 to inspect through z
+  
   // opening the named pipes:
   mkpipe(cmd_Vx_m1, cmd_Vx_m1_mode); // creating the named pipe for communicate the speed along x between the cmd and the motor1 
   mkpipe(cmd_Vz_m2, cmd_Vz_m2_mode); // creating the named pipe for communicate the speed along z between the cmd and the motor2
 
-  mkpipe(m1_x_ins, m1_x_ins_mode); // creating the named pipe for communicate the speed along z between the cmd and the motor2
-
+  mkpipe(m1_x_ins, m1_x_ins_mode); // creating the named pipe for communicate the position along x between the m1 and the inspect
+  mkpipe(m2_z_ins, m2_z_ins_mode); // creating the named pipe for communicate the position along z between the m2 and the inspect
+ 
   // declaring the spawn() arguments:
   char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
+  char * arg_list_m1[] = { "/usr/bin/m1", "-e", "./bin/m1", NULL };
+  char * arg_list_m2[] = { "/usr/bin/m2", "-e", "./bin/m2", NULL };
   char * arg_list_inspection[] = { "/usr/bin/konsole", "-e", "./bin/inspection", NULL };
 
   pid_t pid_cmd = spawn("/usr/bin/konsole", arg_list_command);
-  // open the proces one by one %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  pid_t pid_m1 = spawn("/usr/bin/m1", arg_list_m1);
+  pid_t pid_m2 = spawn("/usr/bin/m2", arg_list_m2);
+  
 
   pid_t pid_insp = spawn("/usr/bin/konsole", arg_list_inspection);
 
   int status;
   waitpid(pid_cmd, &status, 0);
+  waitpid(pid_m1, &status, 0);
+  waitpid(pid_m2, &status, 0);
   waitpid(pid_insp, &status, 0);
   
   printf ("Main program exiting with status %d\n", status);
