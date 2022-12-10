@@ -34,36 +34,36 @@ int main(int argc, char const *argv[]) {
         if(read(Vx_m1, Vx_rcv, sizeof(Vx_rcv)) < 0) {
             perror("error reading the pipe Vx from m1"); // checking errors
         }
-        else if (read(Vx_m1, Vx_rcv, sizeof(Vx_rcv)) == 0) {
-            perror("no proces has opened the Vx pipe for writing"); // checking errors
+        else if (read(Vx_m1, Vx_rcv, sizeof(Vx_rcv)) == 0) { // no message received
+            x_i = x_i + (Vx_i * T);
+            sleep(T);
         }
-        else {
-            if (x_i >= 0 && x_i <= 100){
-                if (Vx_rcv[0] == 0) { // decrease the velocity
-                    Vx_i = Vx_i - 4;
-                    x_i = x_i + (Vx_i * T);
-                    sleep(T);
-                }
-
-                else if (Vx_rcv[0] == 1) { // set velocity equal to 0
-                    Vx_i = 0;
-                    sleep(T);
-                }
-
-                else if (Vx_rcv[0] == 2) { // increase the velocity
-                    Vx_i = Vx_i + 4;
-                    x_i = x_i + (Vx_i * T);
-                    sleep(T);
-                }
-            }
-            else if (x_i > 100) { // reached upper bound stop at that position
-                x_i = 100;
+        else if (read(Vx_m1, Vx_rcv, sizeof(Vx_rcv)) > 0 && x_i >= 0 && x_i <= 100) { 
+            if (Vx_rcv[0] == 0) { // decrease the velocity
+                Vx_i = Vx_i - 4;
+                x_i = x_i + (Vx_i * T);
+                sleep(T);
             }
 
-            else if (x_i < 0) { // reached lower bound stop at that position
-                x_i = 0;
+            else if (Vx_rcv[0] == 1) { // set velocity equal to 0
+                Vx_i = 0;
+                sleep(T);
+            }
+
+            else if (Vx_rcv[0] == 2) { // increase the velocity
+                Vx_i = Vx_i + 4;
+                x_i = x_i + (Vx_i * T);
+                sleep(T);
             }
         }
+        else if (x_i > 100) { // reached upper bound stop at that position
+            x_i = 100;
+        }
+
+        else if (x_i < 0) { // reached lower bound stop at that position
+            x_i = 0;
+        }
+        
 
         x_snd[0] = x_i; // putting the position x_i in the buffer to send it
 

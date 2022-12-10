@@ -10,6 +10,9 @@ int Vz_m2; // inizialize the file descriptor of the pipe Vz
 char *Vx = "/named_pipes/Vx"; // initialize the pipe Vx pathname
 char *Vz = "/named_pipes/Vz"; // initialize the pipe Vx pathname
 
+int V_msg[] = {0, 1, 2};
+int (*V_msg_pp)[3] = &V_msg;
+
 int main(int argc, char const *argv[])
 {
     // Utility variable to avoid trigger resize event on launch
@@ -21,11 +24,11 @@ int main(int argc, char const *argv[])
     // open the pipes:
     Vx_m1 = open(Vx, O_WRONLY); // open the pipe to write on it
     if(Vx_m1 < 0){
-        perror('error while opening the pipe Vx from cmd'); // checking errors
+        perror("error while opening the pipe Vx from cmd"); // checking errors
     } 
     Vz_m2 = open(Vz, O_WRONLY); // open the pipe to write on it
     if(Vz_m2 < 0){
-        perror('error while opening the pipe Vz from cmd'); // checking errors
+        perror("error while opening the pipe Vz from cmd"); // checking errors
     } 
 
 
@@ -55,8 +58,8 @@ int main(int argc, char const *argv[])
                     mvprintw(LINES - 1, 1, "Horizontal Speed Decreased");
                     refresh();
 
-                    if(write(Vx_m1, 0, 1) != 1) { // writing the number 0 on the pipe (0= Vx--)
-                        perror('error tring to write on the Vx pipe from cmd (Vx--)'); // checking errors
+                    if(write(Vx_m1, V_msg_pp, 1) != 1) { // writing the number 0 on the pipe (0= Vx--)
+                        perror("error tring to write on the Vx pipe from cmd (Vx--)"); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -66,8 +69,8 @@ int main(int argc, char const *argv[])
                     mvprintw(LINES - 1, 1, "Horizontal Speed Increased");
                     refresh();
 
-                    if(write(Vx_m1, 2, 1) != 1) { // writing the number 2 on the pipe (2= Vx++)
-                        perror('error tring to write on the Vx pipe from cmd (Vx++)'); // checking errors
+                    if(write(Vx_m1, (V_msg_pp + 2), 1) != 1) { // writing the number 2 on the pipe (2= Vx++)
+                        perror("error tring to write on the Vx pipe from cmd (Vx++)"); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -77,8 +80,8 @@ int main(int argc, char const *argv[])
                     mvprintw(LINES - 1, 1, "Horizontal Motor Stopped");
                     refresh();
 
-                    if(write(Vx_m1, 1, 1) != 1) { // writing the number 1 on the pipe (1= Vx=0)
-                        perror('error tring to write on the Vx pipe from cmd (Vx=0)'); // checking errors
+                    if(write(Vx_m1, (V_msg_pp + 1), 1) != 1) { // writing the number 1 on the pipe (1= Vx=0)
+                        perror("error tring to write on the Vx pipe from cmd (Vx=0)"); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -87,8 +90,8 @@ int main(int argc, char const *argv[])
                 else if(check_button_pressed(vz_decr_btn, &event)) {
                     mvprintw(LINES - 1, 1, "Vertical Speed Decreased");
                     refresh();
-                    if(write(Vz_m2, 0, 1) != 1) { // writing the number 0 on the pipe (0= Vz--)
-                        perror('error tring to write on the Vz pipe from cmd (Vz--)'); // checking errors
+                    if(write(Vz_m2, V_msg_pp, 1) != 1) { // writing the number 0 on the pipe (0= Vz--)
+                        perror("error tring to write on the Vz pipe from cmd (Vz--)"); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -97,8 +100,8 @@ int main(int argc, char const *argv[])
                 else if(check_button_pressed(vz_incr_btn, &event)) {
                     mvprintw(LINES - 1, 1, "Vertical Speed Increased");
                     refresh();
-                    if(write(Vz_m2, 2, 1) != 1) { // writing the number 2 on the pipe (2= Vz++)
-                        perror('error tring to write on the Vz pipe from cmd (Vz++)'); // checking errors
+                    if(write(Vz_m2, (V_msg_pp + 2), 1) != 1) { // writing the number 2 on the pipe (2= Vz++)
+                        perror("error tring to write on the Vz pipe from cmd (Vz++)"); // checking errors
                     }
                     sleep(1); // wait for one second
                 }
@@ -107,8 +110,8 @@ int main(int argc, char const *argv[])
                 else if(check_button_pressed(vz_stp_button, &event)) {
                     mvprintw(LINES - 1, 1, "Vertical Motor Stopped");
                     refresh();
-                    if(write(Vz_m2, 1, 1) != 1) { // writing the number 1 on the pipe (1= Vz=0)
-                        perror('error tring to write on the Vz pipe from cmd (Vz=0)'); // checking errors
+                    if(write(Vz_m2, (V_msg_pp + 1), 1) != 1) { // writing the number 1 on the pipe (1= Vz=0)
+                        perror("error tring to write on the Vz pipe from cmd (Vz=0)"); // checking errors
                     }
                     sleep(1); // wait for one second
                 }

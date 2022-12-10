@@ -60,13 +60,14 @@ int main() {
  
   // declaring the spawn() arguments:
   char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
-  char * arg_list_m1[] = { "/usr/bin/m1", "-e", "./bin/m1", NULL };
-  char * arg_list_m2[] = { "/usr/bin/m2", "-e", "./bin/m2", NULL };
+  char * arg_list_m1[] = { "/usr/bin/motor1", "-e", "./bin/motor1", NULL };
+  char * arg_list_m2[] = { "/usr/bin/motor2", "-e", "./bin/motor2", NULL };
+
   char * arg_list_inspection[] = { "/usr/bin/konsole", "-e", "./bin/inspection", NULL };
 
   pid_t pid_cmd = spawn("/usr/bin/konsole", arg_list_command);
-  pid_t pid_m1 = spawn("/usr/bin/m1", arg_list_m1);
-  pid_t pid_m2 = spawn("/usr/bin/m2", arg_list_m2);
+  pid_t pid_m1 = spawn("/usr/bin/motor1", arg_list_m1);
+  pid_t pid_m2 = spawn("/usr/bin/motor2", arg_list_m2);
   
 
   pid_t pid_insp = spawn("/usr/bin/konsole", arg_list_inspection);
