@@ -10,7 +10,7 @@
 int x_e_in; // declare the file descriptor of the pipe x
 int z_e_in; // declare the file descriptor of the pipe z
 char *x = "/named_pipes/x"; // initialize the pipe x pathname
-char *z = "/named_pipes/z"; // initialize the pipe x pathname
+char *z = "/named_pipes/z"; // initialize the pipe z pathname
 
 int x_e_out; // declare the file descriptor of the pipe x_c (corrected)
 int z_e_out; // declare the file descriptor of the pipe z_c (corrected)
@@ -25,7 +25,7 @@ int z_snd[1]; // declare the z corrected position sending buffer
 
 fd_set rfds; // declare the select mode
 struct timeval tv; // declare the time interval of the select function
-int retval; // declare the returned valeu, which will be the fd on which we will read
+int retval; // declare the returned valeu
 int nfds = 1; // initialize number of fd starting from 0
 int fd; // declare the counter for FD_ISSET
 
