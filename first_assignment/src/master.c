@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 
 int mkpipe(const char *pathname, mode_t mode) { // function to create a named pipe
   int pipe; // declare the returned valeu of the funtion
@@ -92,6 +93,7 @@ int main() {
   pid_t pid_err = spawn("/usr/bin/error", arg_list_err);
   pid_t pid_insp = spawn("/usr/bin/konsole", arg_list_insp);
 
+  // menaging the inspect signals:
   // open the pipes for the signals "stop" and "reset":
   fd_s = open(ins_s_mass, O_RDONLY); // open the pipe s to read on it
     if( ins_s_mass < 0){
@@ -104,12 +106,32 @@ int main() {
   }
   else if (read(fd_s, s_rcv, sizeof(s_rcv)) > 0) { // otherwise read the signal id
       if (s_rcv[0] = 0) { // the inspect is asking to do the stop operation
-        // do something
+        if (kill(pid_cmd, int SIGUSR1) < 0) {
+          perror("error while sending the signal to the cmd from master");
+        }
+        if (kill(pid_m1, int SIGUSR1) < 0) {
+          perror("error while sending the signal to the m1 from master");
+        }
+        if (kill(pid_m2, int SIGUSR1) < 0) {
+          perror("error while sending the signal to the m2 from master");
+        }
       }
       else if (s_rcv[0] = 1) { // the inspect is asking to do the reset operation
-        // do something
+        if (kill(pid_cmd, int SIGUSR2) < 0) {
+          perror("error while sending the signal to the cmd from master");
+        }
+        if (kill(pid_m1, int SIGUSR2) < 0) {
+          perror("error while sending the signal to the m1 from master");
+        }
+        if (kill(pid_m2, int SIGUSR2) < 0) {
+          perror("error while sending the signal to the m2 from master");
+        }
       }
   }
+
+  // watchdogs:
+
+  // closure
   int status;
   waitpid(pid_cmd, &status, 0);
   waitpid(pid_m1, &status, 0);
