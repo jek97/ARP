@@ -10,11 +10,14 @@
 
 int x_ins_in; // declare the file descriptor of the pipe x_c
 int z_ins_in; // declare the file descriptor of the pipe z_c
+int s_ins_out; // declare the file descriptor of the pipe s 
 char *x_c = "/named_pipes/x_c"; // initialize the pipe x_c pathname
 char *z_c = "/named_pipes/z_c"; // initialize the pipe z_c pathname
+char *s = "./named_pipes/s" // initialize the the pipe s pathname
 
 int x_rcv[1]; // declare the x position receiving buffer
 int z_rcv[1]; // declare the z position receiving buffer
+int s_snd[1]; // declare the s signal sending buffer
 
 fd_set rfds; // declare the select mode
 struct timeval tv; // declare the time interval of the select function
@@ -30,7 +33,7 @@ int main(int argc, char const *argv[])
     int first_resize = TRUE;
 
     // open the pipes:
-    // input pipes
+    // input pipes:
     x_ins_in = open(x_c, O_RDONLY); // open the pipe x_c to read on it
     if(x_ins_in < 0){
         perror("error opening the pipe x_c from inspection"); // checking errors
@@ -39,6 +42,12 @@ int main(int argc, char const *argv[])
     z_ins_in = open(z_c, O_RDONLY); // open the pipe z_c to read on it
     if(z_ins_in < 0){
         perror("error opening the pipe z_c from inspection"); // checking errors
+    }
+
+    // output pipes:
+    s_ins_out = open(s, O_WRONLY); // open the pipe s to write on it
+    if(s_ins_out < 0){
+        perror("error opening the pipe s from inspection"); // checking errors
     }
 
     // Initialize User Interface 
@@ -105,6 +114,10 @@ int main(int argc, char const *argv[])
                 if(check_button_pressed(stp_button, &event)) {
                     mvprintw(LINES - 1, 1, "STP button pressed");
                     refresh();
+                    s_snd[0] = 0; // setting the signal id to send
+                    if(write(s_ins_out, s_snd, sizeof(s_snd)) != 1) { // writing the signal id on the pipe
+                        perror("error tring to write on the s pipe from inspect"); // checking errors
+                    }
                     sleep(1);
                     for(int j = 0; j < COLS; j++) {
                         mvaddch(LINES - 1, j, ' ');
@@ -115,6 +128,10 @@ int main(int argc, char const *argv[])
                 else if(check_button_pressed(rst_button, &event)) {
                     mvprintw(LINES - 1, 1, "RST button pressed");
                     refresh();
+                    s_snd[0] = 1; // setting the signal id to send
+                    if(write(s_ins_out, s_snd, sizeof(s_snd)) != 1) { // writing the signal id on the pipe
+                        perror("error tring to write on the s pipe from inspect"); // checking errors
+                    }
                     sleep(1);
                     for(int j = 0; j < COLS; j++) {
                         mvaddch(LINES - 1, j, ' ');
