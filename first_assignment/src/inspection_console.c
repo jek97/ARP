@@ -13,7 +13,7 @@ int z_ins_in; // declare the file descriptor of the pipe z_c
 int s_ins_out; // declare the file descriptor of the pipe s 
 char *x_c = "/named_pipes/x_c"; // initialize the pipe x_c pathname
 char *z_c = "/named_pipes/z_c"; // initialize the pipe z_c pathname
-char *s = "./named_pipes/s" // initialize the the pipe s pathname
+char *s = "./named_pipes/s"; // initialize the the pipe s pathname
 
 int x_rcv[1]; // declare the x position receiving buffer
 int z_rcv[1]; // declare the z position receiving buffer

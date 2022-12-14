@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>
+#include <signal.h>
 
 int Vx_m1; // inizialize the file descriptor of the pipe Vx
 int x_m1; // inizialize the file descriptor of the pipe x
@@ -17,7 +18,24 @@ int x_i = 0; // initialize position along x axis
 int Vx_i = 0; // initialize the velocity along x
 int T = 10; // initialize the time period of the speed
 
+void sig_handler (int signo) {
+    if (signo == SIGUSR1) { // stop signal received
+        Vx_i = 0; // set the velocity to 0
+    }
+    else if (signo == SIGUSR2) { //reset signal received
+        Vx_i = 0; // set the velocity to 0
+        x_i = -0.1; // set the positionx to 0, , thanks to the error proces also
+    }
+}
+
 int main(int argc, char const *argv[]) {
+    // condition for the signal:
+    if (signal(SIGUSR1, sig_handler) == SIG_ERR) {
+        perror("error receiving the signal from command_console");
+    }
+    if (signal(SIGUSR2, sig_handler) == SIG_ERR) {
+        perror("error receiving the signal from command_console");
+    }
 
     // open the pipes:
     Vx_m1 = open(Vx, O_RDONLY); // open the pipe Vx to read on it

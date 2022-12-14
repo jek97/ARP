@@ -13,8 +13,7 @@ char *Vz = "/named_pipes/Vz"; // initialize the pipe Vx pathname
 int V_msg[] = {0, 1, 2};
 int (*V_msg_pp)[3] = &V_msg;
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]){
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 

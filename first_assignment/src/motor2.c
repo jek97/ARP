@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>
+#include <signal.h>
 
 int Vz_m2; // inizialize the file descriptor of the pipe Vz
 int z_m2; // inizialize the file descriptor of the pipe z
@@ -17,7 +18,24 @@ int z_i = 0; // initialize position along z azis
 int Vz_i = 0; // initialize the velocity along z
 int T = 10; // initialize the time period of the speed
 
+void sig_handler (int signo) {
+    if (signo == SIGUSR1) { // stop signal received
+        Vz_i = 0; // set the velocity equal to 0
+    }
+    else if (signo == SIGUSR2) { // reset signal received
+        Vz_i = 0; // set the velocity equal to 0
+        z_i = -0.1; // set the position z equal to 0, thanks to the error proces also
+    }
+}
+
 int main(int argc, char const *argv[]) {
+    // condition for the signal:
+    if (signal(SIGUSR1, sig_handler) == SIG_ERR) {
+        perror("error receiving the signal from command_console");
+    }
+    if (signal(SIGUSR2, sig_handler) == SIG_ERR) {
+        perror("error receiving the signal from command_console");
+    }
 
     // open the pipes:
     Vz_m2 = open(Vz, O_RDONLY); // open the pipe Vz to read on it
