@@ -1,7 +1,7 @@
 #include "./../include/command_utilities.h"
 #include <unistd.h>
 #include <fcntl.h>
-
+#include <time.h>
 int fd;
 
 
@@ -13,13 +13,29 @@ char *Vz = "/named_pipes/Vz"; // initialize the pipe Vx pathname
 int V_msg[] = {0, 1, 2};
 int (*V_msg_pp)[3] = &V_msg;
 
+void logger(char * log_pathname, char * log_msg, time_t t_proces) {
+  time_t l_t = time(NULL); // time at the log action
+  time_t t_msg = t_proces - l_t; // time respect the beginning of the proces
+  char log_msg_arr[] = {*log_msg, ',', t_msg}; // declare the log message
+  int log_fd; // declare the log file descriptor
+  if( (log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND)) < 0){ // open the log file to write on it
+    perror("error opening the log file"); // checking errors
+  }
+  if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
+      perror("error tring to write the log message in the log file"); // checking errors
+  }
+}
+
 int main(int argc, char const *argv[]){
+    // logger setting and initialization
+    time_t t = time(NULL);
+    logger("./log_files/command.txt", "log legend: /n 0001=opened the pipes /n 0010= Vx-- /n 0011 = Vx++ /n 0100= Vx=0 /n 0101= Vz-- /n 0110= Vz++ /n 0111= Vz=0 ", t); // write a log message
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
     // Initialize User Interface 
     init_console_ui();
-    
+
     // open the pipes:
     Vx_m1 = open(Vx, O_WRONLY); // open the pipe to write on it
     if(Vx_m1 < 0){
@@ -30,6 +46,7 @@ int main(int argc, char const *argv[]){
         perror("error while opening the pipe Vz from cmd"); // checking errors
     } 
 
+    logger("./log_files/command.txt", "0001", t); // write a log message
 
     // Infinite loop
     while(TRUE)
@@ -60,6 +77,9 @@ int main(int argc, char const *argv[]){
                     if(write(Vx_m1, V_msg_pp, 1) != 1) { // writing the number 0 on the pipe (0= Vx--)
                         perror("error tring to write on the Vx pipe from cmd (Vx--)"); // checking errors
                     }
+
+                    logger("./log_files/command.txt", "0010", t); // write a log message
+
                     sleep(1); // wait for one second
                 }
 
@@ -71,6 +91,9 @@ int main(int argc, char const *argv[]){
                     if(write(Vx_m1, (V_msg_pp + 2), 1) != 1) { // writing the number 2 on the pipe (2= Vx++)
                         perror("error tring to write on the Vx pipe from cmd (Vx++)"); // checking errors
                     }
+
+                    logger("./log_files/command.txt", "0011", t); // write a log message
+
                     sleep(1); // wait for one second
                 }
 
@@ -82,6 +105,9 @@ int main(int argc, char const *argv[]){
                     if(write(Vx_m1, (V_msg_pp + 1), 1) != 1) { // writing the number 1 on the pipe (1= Vx=0)
                         perror("error tring to write on the Vx pipe from cmd (Vx=0)"); // checking errors
                     }
+
+                    logger("./log_files/command.txt", "0100", t); // write a log message
+
                     sleep(1); // wait for one second
                 }
 
@@ -92,6 +118,9 @@ int main(int argc, char const *argv[]){
                     if(write(Vz_m2, V_msg_pp, 1) != 1) { // writing the number 0 on the pipe (0= Vz--)
                         perror("error tring to write on the Vz pipe from cmd (Vz--)"); // checking errors
                     }
+
+                    logger("./log_files/command.txt", "0101", t); // write a log message
+
                     sleep(1); // wait for one second
                 }
 
@@ -102,6 +131,9 @@ int main(int argc, char const *argv[]){
                     if(write(Vz_m2, (V_msg_pp + 2), 1) != 1) { // writing the number 2 on the pipe (2= Vz++)
                         perror("error tring to write on the Vz pipe from cmd (Vz++)"); // checking errors
                     }
+
+                    logger("./log_files/command.txt", "0110", t); // write a log message
+
                     sleep(1); // wait for one second
                 }
 
@@ -112,6 +144,9 @@ int main(int argc, char const *argv[]){
                     if(write(Vz_m2, (V_msg_pp + 1), 1) != 1) { // writing the number 1 on the pipe (1= Vz=0)
                         perror("error tring to write on the Vz pipe from cmd (Vz=0)"); // checking errors
                     }
+
+                    logger("./log_files/command.txt", "0111", t); // write a log message
+
                     sleep(1); // wait for one second
                 }
             }

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
+#include <time.h>
 
 int Vz_m2; // inizialize the file descriptor of the pipe Vz
 int z_m2; // inizialize the file descriptor of the pipe z
@@ -28,7 +29,24 @@ void sig_handler (int signo) {
     }
 }
 
+void logger(char * log_pathname, char * log_msg, time_t t_proces) {
+  time_t l_t = time(NULL); // time at the log action
+  time_t t_msg = t_proces - l_t; // time respect the beginning of the proces
+  char log_msg_arr[] = {*log_msg, ',', t_msg}; // declare the log message
+  int log_fd; // declare the log file descriptor
+  if( (log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND)) < 0){ // open the log file to write on it
+    perror("error opening the log file"); // checking errors
+  }
+  if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
+      perror("error tring to write the log message in the log file"); // checking errors
+  }
+}
+
 int main(int argc, char const *argv[]) {
+    // logger setting and initialization
+    time_t t = time(NULL);
+    logger("./log_files/motor2.txt", "log legend: /n 0001=opened the pipes /n 0010= no message received /n 0011 = decrease velocity /n 0100= velocity=0 /n 0101= increase velocity /n 0110= reached upper bound /n 0111= reached lower bound /n 1000= writed the position on the pipe", t); // write a log message
+
     // condition for the signal:
     if (signal(SIGUSR1, sig_handler) == SIG_ERR) {
         perror("error receiving the signal from command_console");
@@ -48,45 +66,50 @@ int main(int argc, char const *argv[]) {
         perror("error while opening the pipe z from m2"); // checking errors
     }
 
+    logger("./log_files/motor2.txt", "0001", t); // write a log message
+
     while(1){
         if(read(Vz_m2, Vz_rcv, sizeof(Vz_rcv)) < 0) {
             perror("error reading the pipe Vz from m2"); // checking errors
         }
         else if (read(Vz_m2, Vz_rcv, sizeof(Vz_rcv)) == 0) { // no message received
             z_i = z_i + (Vz_i * T);
-            sleep(T);
+            logger("./log_files/motor2.txt", "0010", t); // write a log message
         }
         else if (read(Vz_m2, Vz_rcv, sizeof(Vz_rcv)) > 0 && z_i >= 0 && z_i <= 100) { 
             if (Vz_rcv[0] == 0) { // decrease the velocity
                 Vz_i = Vz_i - 4;
                 z_i = z_i + (Vz_i * T);
-                sleep(T);
+                logger("./log_files/motor2.txt", "0011", t); // write a log message
             }
 
             else if (Vz_rcv[0] == 1) { // set velocity equal to 0
                 Vz_i = 0;
-                sleep(T);
+                logger("./log_files/motor2.txt", "0100", t); // write a log message
             }
 
             else if (Vz_rcv[0] == 2) { // increase the velocity
                 Vz_i = Vz_i + 4;
                 z_i = z_i + (Vz_i * T);
-                sleep(T);
+                logger("./log_files/motor2.txt", "0101", t); // write a log message
             }
         }
         else if (z_i > 100) { // reached upper bound stop at that position
             z_i = 100;
+            logger("./log_files/motor2.txt", "0110", t); // write a log message
         }
 
         else if (z_i < 0) { // reached lower bound stop at that position
             z_i = 0;
+            logger("./log_files/motor2.txt", "0111", t); // write a log message
         }
-        
+        sleep(T);
 
         z_snd[0] = z_i; // putting the position z_i in the buffer to send it
 
         if(write(z_m2, z_snd, sizeof(z_snd)) != 1) { // writing the position on the pipe
             perror("error tring to write on the z pipe from m2"); // checking errors
         }
+        logger("./log_files/motor2.txt", "1000", t); // write a log message
     }
 }

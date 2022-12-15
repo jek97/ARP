@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <time.h>
 
 int mkpipe(const char *pathname, mode_t mode) { // function to create a named pipe
   int pipe; // declare the returned valeu of the funtion
@@ -36,8 +37,23 @@ int spawn(const char * program, char * arg_list[]) {
   }
 }
 
-int main() {
+void logger(char * log_pathname, char * log_msg, time_t t_proces) {
+  time_t l_t = time(NULL); // time at the log action
+  time_t t_msg = t_proces - l_t; // time respect the beginning of the proces
+  char log_msg_arr[] = {' ', 'log_msg', ',', t_msg, '; '}; // declare the log message
+  int log_fd; // declare the log file descriptor
+  if( (log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND)) < 0){ // open the log file to write on it
+    perror("error opening the log file"); // checking errors
+  }
+  if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
+      perror("error tring to write the log message in the log file"); // checking errors
+  }
+}
 
+int main() {
+  // logger setting and initialization:
+  time_t t = time(NULL);
+  logger("./log_files/master.txt", "log legend: 0001= opened the pipes /n 0010= spawned the processes /n 0100= stop signal sended /n 0101= reset signal sended ", t);
   // declering the mkpipe() arguments:
   // % from cmd to m1, m2:
   char *cmd_Vx_m1 = "./named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
@@ -66,7 +82,6 @@ int main() {
 
   int fd_s; // declare the file descriptor for the pipe s
   int s_rcv[1]; // declare the array where i will store the signal id
-
   
   // opening the named pipes:
   mkpipe(cmd_Vx_m1, cmd_Vx_m1_mode); // creating the named pipe for communicate the speed along x between the cmd and the motor1 
@@ -79,6 +94,8 @@ int main() {
   mkpipe(err_z_c_ins, err_z_c_ins_mode); // creating the named pipe for communicate the corrected position along z_c between the error and the inspect
 
   mkpipe(ins_s_mass, ins_s_mass_mode); // creating the named pipe for communicate the signal id from the inspect to the master
+
+  logger("./log_files/master.txt", "0001", t ); // write a log message
  
   // declaring the spawn() arguments:
   char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
@@ -93,6 +110,8 @@ int main() {
   pid_t pid_err = spawn("/usr/bin/error", arg_list_err);
   pid_t pid_insp = spawn("/usr/bin/konsole", arg_list_insp);
 
+  logger("./log_files/master.txt", "0010", t ); // write a log message
+
   // menaging the inspect signals:
   // open the pipes for the signals "stop" and "reset":
   fd_s = open(ins_s_mass, O_RDONLY); // open the pipe s to read on it
@@ -100,24 +119,34 @@ int main() {
         perror("error opening the pipe s from master"); // checking errors
     }
   
-  // read from the pipe:
-  if(read(fd_s, s_rcv, sizeof(s_rcv)) < 0) { // checking errors
+  logger("./log_files/master.txt", "0011", t ); // write a log message
+
+  while(1) {
+    // read from the pipe and send the sgnals:
+    if(read(fd_s, s_rcv, sizeof(s_rcv)) < 0) { // checking errors
       perror("error reading the pipe s from master"); 
-  }
-  else if (read(fd_s, s_rcv, sizeof(s_rcv)) > 0) { // otherwise read the signal id
+    }
+    else if (read(fd_s, s_rcv, sizeof(s_rcv)) > 0) { // otherwise read the signal id
       if (s_rcv[0] = 0) { // the inspect is asking to do the stop operation
         if (kill((pid_cmd, pid_m1, pid_m2), SIGUSR1) < 0) {
           perror("error while sending the signal to the cmd, m1, m2 from master");
         }
+
+        logger("./log_files/master.txt", "0100", t ); // write a log message
+
       }
       else if (s_rcv[0] = 1) { // the inspect is asking to do the reset operation
         if (kill((pid_cmd, pid_m1, pid_m2), SIGUSR2) < 0) {
           perror("error while sending the signal to the cmd, m1, m2 from master");
         }
-      }
-  }
 
-  // watchdogs:
+        logger("./log_files/master.txt", "0101", t ); // write a log message
+
+      }
+    }
+
+    // Watchdogs:
+  }
 
   // closure
   int status;

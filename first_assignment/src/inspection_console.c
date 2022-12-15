@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 int x_ins_in; // declare the file descriptor of the pipe x_c
 int z_ins_in; // declare the file descriptor of the pipe z_c
@@ -27,8 +28,24 @@ int fd; // declare the counter for FD_ISSET
 
 float x, z; // End-effector coordinates
 
-int main(int argc, char const *argv[])
-{
+void logger(char * log_pathname, char * log_msg, time_t t_proces) {
+  time_t l_t = time(NULL); // time at the log action
+  time_t t_msg = t_proces - l_t; // time respect the beginning of the proces
+  char log_msg_arr[] = {*log_msg, ',', t_msg}; // declare the log message
+  int log_fd; // declare the log file descriptor
+  if( (log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND)) < 0){ // open the log file to write on it
+    perror("error opening the log file"); // checking errors
+  }
+  if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
+      perror("error tring to write the log message in the log file"); // checking errors
+  }
+}
+
+int main(int argc, char const *argv[]){
+    // logger setting and initialization
+    time_t t = time(NULL);
+    logger("./log_files/inspection.txt", "log legend: /n 0001=opened the pipes /n 0010= x received /n 0011= z received /n 0100= stop signal sended /n 0101= reset signal sended", t); // write a log message
+
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
@@ -49,6 +66,8 @@ int main(int argc, char const *argv[])
     if(s_ins_out < 0){
         perror("error opening the pipe s from inspection"); // checking errors
     }
+
+    logger("./log_files/inspection.txt", "0001", t); // write a log message
 
     // Initialize User Interface 
     init_console_ui();
@@ -78,6 +97,8 @@ int main(int argc, char const *argv[])
                         }
                         else if (read(x_ins_in, x_rcv, sizeof(x_rcv)) > 0) { // otherwise read the position x
                             x = x_rcv[0];
+
+                            logger("./log_files/inspection.txt", "0010", t); // write a log message
                         }
                     }
                     else if (fd == z_ins_in) { // the pipe z_ins_in is ready for communicate
@@ -86,6 +107,8 @@ int main(int argc, char const *argv[])
                         }
                         else if (read(z_ins_in, z_rcv, sizeof(z_rcv)) > 0) { // otherwise read the position z
                             z = z_rcv[0];
+
+                            logger("./log_files/inspection.txt", "0011", t); // write a log message
                         }
                     }
                 }
@@ -118,6 +141,8 @@ int main(int argc, char const *argv[])
                     if(write(s_ins_out, s_snd, sizeof(s_snd)) != 1) { // writing the signal id on the pipe
                         perror("error tring to write on the s pipe from inspect"); // checking errors
                     }
+                    logger("./log_files/inspection.txt", "0100", t); // write a log message
+
                     sleep(1);
                     for(int j = 0; j < COLS; j++) {
                         mvaddch(LINES - 1, j, ' ');
@@ -132,6 +157,8 @@ int main(int argc, char const *argv[])
                     if(write(s_ins_out, s_snd, sizeof(s_snd)) != 1) { // writing the signal id on the pipe
                         perror("error tring to write on the s pipe from inspect"); // checking errors
                     }
+                    logger("./log_files/inspection.txt", "0101", t); // write a log message
+
                     sleep(1);
                     for(int j = 0; j < COLS; j++) {
                         mvaddch(LINES - 1, j, ' ');
