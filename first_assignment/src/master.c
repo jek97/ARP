@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <time.h>
+#include <string.h>
 
 int mkpipe(const char *pathname, mode_t mode) { // function to create a named pipe
   int pipe; // declare the returned valeu of the funtion
@@ -37,12 +38,14 @@ int spawn(const char * program, char * arg_list[]) {
   }
 }
 
-void logger(char * log_pathname, char * log_msg, time_t t_proces) {
-  time_t l_t = time(NULL); // time at the log action
-  time_t t_msg = t_proces - l_t; // time respect the beginning of the proces
-  char log_msg_arr[] = {' ', 'log_msg', ',', t_msg, '; '}; // declare the log message
+void logger(char * log_pathname, char log_msg[]) {
+  double c = (double) (clock() / CLOCKS_PER_SEC);
+  char log_msg_arr[sizeof(&log_msg)+11];
+  if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
+    perror("error in logger sprintf");
+  }
   int log_fd; // declare the log file descriptor
-  if( (log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND)) < 0){ // open the log file to write on it
+  if ((log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND, 00700)) < 0){ // open the log file to write on it
     perror("error opening the log file"); // checking errors
   }
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
@@ -51,9 +54,7 @@ void logger(char * log_pathname, char * log_msg, time_t t_proces) {
 }
 
 int main() {
-  // logger setting and initialization:
-  time_t t = time(NULL);
-  logger("./log_files/master.txt", "log legend: 0001= opened the pipes /n 0010= spawned the processes /n 0100= stop signal sended /n 0101= reset signal sended ", t);
+  // log legend: 0001= opened the pipes /n 0010= spawned the processes /n 0100= stop signal sended /n 0101= reset signal sended
   // declering the mkpipe() arguments:
   // % from cmd to m1, m2:
   char *cmd_Vx_m1 = "./named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
@@ -95,7 +96,7 @@ int main() {
 
   mkpipe(ins_s_mass, ins_s_mass_mode); // creating the named pipe for communicate the signal id from the inspect to the master
 
-  logger("./log_files/master.txt", "0001", t ); // write a log message
+  logger("./log_files/master.txt", "0001"); // write a log message
  
   // declaring the spawn() arguments:
   char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
@@ -110,7 +111,7 @@ int main() {
   pid_t pid_err = spawn("/usr/bin/error", arg_list_err);
   pid_t pid_insp = spawn("/usr/bin/konsole", arg_list_insp);
 
-  logger("./log_files/master.txt", "0010", t ); // write a log message
+  logger("./log_files/master.txt", "0010"); // write a log message
 
   // menaging the inspect signals:
   // open the pipes for the signals "stop" and "reset":
@@ -119,7 +120,7 @@ int main() {
         perror("error opening the pipe s from master"); // checking errors
     }
   
-  logger("./log_files/master.txt", "0011", t ); // write a log message
+  logger("./log_files/master.txt", "0011"); // write a log message
 
   while(1) {
     // read from the pipe and send the sgnals:
@@ -132,7 +133,7 @@ int main() {
           perror("error while sending the signal to the cmd, m1, m2 from master");
         }
 
-        logger("./log_files/master.txt", "0100", t ); // write a log message
+        logger("./log_files/master.txt", "0100"); // write a log message
 
       }
       else if (s_rcv[0] = 1) { // the inspect is asking to do the reset operation
@@ -140,24 +141,62 @@ int main() {
           perror("error while sending the signal to the cmd, m1, m2 from master");
         }
 
-        logger("./log_files/master.txt", "0101", t ); // write a log message
+        logger("./log_files/master.txt", "0101"); // write a log message
 
       }
     }
 
     // Watchdogs:
+    struct stat command_info; // declare the struct where i will store the command log file information
+    struct stat motor1_info; // declare the struct where i will store the motor1 log file information
+    struct stat motor2_info; // declare the struct where i will store the motor2 log file information
+    struct stat error_info; // declare the struct where i will store the error log file information
+    struct stat inspect_info; // declare the struct where i will store the inspect log file information
+    time_t t; // declare the current time
+
+    if(stat("./log_files/command.txt", &command_info) < 0) { // save the log file information of the command in the struct
+      perror("error while reading the command log file informations"); // check errors
+    }
+    if(stat("./log_files/motor1.txt", &motor1_info) < 0) { // save the log file information of the motor1 in the struct
+      perror("error while reading the motor1 log file informations"); // check errors
+    }
+    if(stat("./log_files/motor2.txt", &motor2_info) < 0) { // save the log file information of the motor2 in the struct
+      perror("error while reading the motor2 log file informations"); // check errors
+    }
+    if(stat("./log_files/error.txt", &error_info) < 0) { // save the log file information of the error in the struct
+      perror("error while reading the error log file informations"); // check errors
+    }
+    if(stat("./log_files/inspection.txt", &inspect_info) < 0) { // save the log file information of the inspection in the struct
+      perror("error while reading the inspect log file informations"); // check errors
+    }
+    
+    t = time(NULL); // obtain the actual time
+    if ((difftime(t, command_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor1_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor2_info.st_mtim.tv_sec) >= 60) | (difftime(t, error_info.st_mtim.tv_sec) >= 60) | (difftime(t, inspect_info.st_mtim.tv_sec) >= 60)) { // checking if one process is not active for 60 seconds
+      if (kill((pid_cmd, pid_m1, pid_m2, pid_err, pid_insp), SIGKILL) < 0) { // kill all the processes
+        perror("error while closing all the proces form the watchdogs"); // check errors
+      }
+      else {
+        break;
+      }
+    }
   }
 
   // closure
-  int status;
-  waitpid(pid_cmd, &status, 0);
-  waitpid(pid_m1, &status, 0);
-  waitpid(pid_m2, &status, 0);
-  waitpid(pid_err, &status, 0);
-  waitpid(pid_insp, &status, 0);
+  int status[5];
+  int *status_p = status;;
+  waitpid(pid_cmd, status_p, 0);
+  remove(cmd_Vx_m1);
+  remove(cmd_Vz_m2);
+  waitpid(pid_m1, status_p+1, 0);
+  remove(m1_x_err);
+  waitpid(pid_m2, status_p+2, 0);
+  remove(m2_z_err);
+  waitpid(pid_err, status_p+3, 0);
+  remove(err_x_c_ins);
+  remove(err_z_c_ins);
+  waitpid(pid_insp, status_p+4, 0);
+  remove(ins_s_mass);
   
-  printf ("Main program exiting with status %d\n", status);
+  printf ("the following process exited in the following way; command console %d\n motor1 %d\n motor2 %d\n error %d\n inspection console %d\n", status[0], status[1], status[2], status[3], status[4]);
   return 0;
 }
-
-// remembar to close the pipes when you've finished to use them
