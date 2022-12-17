@@ -12,9 +12,9 @@
 int x_ins_in; // declare the file descriptor of the pipe x_c
 int z_ins_in; // declare the file descriptor of the pipe z_c
 int s_ins_out; // declare the file descriptor of the pipe s 
-char *x_c = "/named_pipes/x_c"; // initialize the pipe x_c pathname
-char *z_c = "/named_pipes/z_c"; // initialize the pipe z_c pathname
-char *s = "./named_pipes/s"; // initialize the the pipe s pathname
+char *x_c = "../bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+char *z_c = "../bin/named_pipes/z_c"; // initialize the pipe z_c pathname
+char *s = "../bin/named_pipes/s"; // initialize the the pipe s pathname
 
 int x_rcv[1]; // declare the x position receiving buffer
 int z_rcv[1]; // declare the z position receiving buffer
@@ -30,13 +30,13 @@ float x, z; // End-effector coordinates
 
 void logger(char * log_pathname, char log_msg[]) {
   double c = (double) (clock() / CLOCKS_PER_SEC);
-  char log_msg_arr[sizeof(&log_msg)+11];
+  char log_msg_arr[strlen(log_msg)+11];
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
     perror("error in logger sprintf");
   }
   int log_fd; // declare the log file descriptor
-  if ((log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND, 00700)) < 0){ // open the log file to write on it
-    perror("error opening the log file"); // checking errors
+  if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
+    perror(("error opening the log file %s", log_pathname)); // checking errors
   }
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
@@ -44,7 +44,8 @@ void logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]){
-    //log legend: /n 0001=opened the pipes /n 0010= x received /n 0011= z received /n 0100= stop signal sended /n 0101= reset signal sended
+    char * log_pn_inspect = "../bin/log_files/inspect.txt"; // initialize the log file path name
+    logger(log_pn_inspect, "log legend: /n 0001=opened the pipes  0010= x received  0011= z received /n 0100= stop signal sended  0101= reset signal sended");
 
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
@@ -67,7 +68,7 @@ int main(int argc, char const *argv[]){
         perror("error opening the pipe s from inspection"); // checking errors
     }
 
-    logger("./log_files/inspection.txt", "0001"); // write a log message
+    logger(log_pn_inspect, "0001"); // write a log message
 
     // Initialize User Interface 
     init_console_ui();
@@ -98,7 +99,7 @@ int main(int argc, char const *argv[]){
                         else if (read(x_ins_in, x_rcv, sizeof(x_rcv)) > 0) { // otherwise read the position x
                             x = x_rcv[0];
 
-                            logger("./log_files/inspection.txt", "0010"); // write a log message
+                            logger(log_pn_inspect, "0010"); // write a log message
                         }
                     }
                     else if (fd == z_ins_in) { // the pipe z_ins_in is ready for communicate
@@ -108,7 +109,7 @@ int main(int argc, char const *argv[]){
                         else if (read(z_ins_in, z_rcv, sizeof(z_rcv)) > 0) { // otherwise read the position z
                             z = z_rcv[0];
 
-                            logger("./log_files/inspection.txt", "0011"); // write a log message
+                            logger(log_pn_inspect, "0011"); // write a log message
                         }
                     }
                 }
@@ -141,7 +142,7 @@ int main(int argc, char const *argv[]){
                     if(write(s_ins_out, s_snd, sizeof(s_snd)) != 1) { // writing the signal id on the pipe
                         perror("error tring to write on the s pipe from inspect"); // checking errors
                     }
-                    logger("./log_files/inspection.txt", "0100"); // write a log message
+                    logger(log_pn_inspect, "0100"); // write a log message
 
                     sleep(1);
                     for(int j = 0; j < COLS; j++) {
@@ -157,7 +158,7 @@ int main(int argc, char const *argv[]){
                     if(write(s_ins_out, s_snd, sizeof(s_snd)) != 1) { // writing the signal id on the pipe
                         perror("error tring to write on the s pipe from inspect"); // checking errors
                     }
-                    logger("./log_files/inspection.txt", "0101"); // write a log message
+                    logger(log_pn_inspect, "0101"); // write a log message
 
                     sleep(1);
                     for(int j = 0; j < COLS; j++) {

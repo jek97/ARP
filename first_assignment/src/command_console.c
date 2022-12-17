@@ -9,21 +9,21 @@ int fd;
 
 int Vx_m1; // inizialize the file descriptor of the pipe Vx
 int Vz_m2; // inizialize the file descriptor of the pipe Vz
-char *Vx = "/named_pipes/Vx"; // initialize the pipe Vx pathname
-char *Vz = "/named_pipes/Vz"; // initialize the pipe Vx pathname
+char *Vx = "../bin/named_pipes/Vx"; // initialize the pipe Vx pathname
+char *Vz = "../bin/named_pipes/Vz"; // initialize the pipe Vx pathname
 
 int V_msg[] = {0, 1, 2};
 int (*V_msg_pp)[3] = &V_msg;
 
 void logger(char * log_pathname, char log_msg[]) {
   double c = (double) (clock() / CLOCKS_PER_SEC);
-  char log_msg_arr[sizeof(&log_msg)+11];
+  char log_msg_arr[strlen(log_msg)+11];
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
     perror("error in logger sprintf");
   }
   int log_fd; // declare the log file descriptor
-  if ((log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND, 00700)) < 0){ // open the log file to write on it
-    perror("error opening the log file"); // checking errors
+  if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
+    perror(("error opening the log file %s", log_pathname)); // checking errors
   }
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
@@ -31,7 +31,8 @@ void logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]){
-    //log legend: /n 0001=opened the pipes /n 0010= Vx-- /n 0011 = Vx++ /n 0100= Vx=0 /n 0101= Vz-- /n 0110= Vz++ /n 0111= Vz=0 
+    char * log_pn_command = "../bin/log_files/command.txt"; // initialize the log file path name
+    logger(log_pn_command, "log legend: /n 0001=opened the pipes  0010= Vx--  0011 = Vx++ /n 0100= Vx=0  0101= Vz--  0110= Vz++ /n 0111= Vz=0");
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
@@ -48,7 +49,7 @@ int main(int argc, char const *argv[]){
         perror("error while opening the pipe Vz from cmd"); // checking errors
     } 
 
-    logger("./log_files/command.txt", "0001"); // write a log message
+    logger(log_pn_command, "0001"); // write a log message
 
     // Infinite loop
     while(TRUE)
@@ -80,7 +81,7 @@ int main(int argc, char const *argv[]){
                         perror("error tring to write on the Vx pipe from cmd (Vx--)"); // checking errors
                     }
 
-                    logger("./log_files/command.txt", "0010"); // write a log message
+                    logger(log_pn_command, "0010"); // write a log message
 
                     sleep(1); // wait for one second
                 }
@@ -94,7 +95,7 @@ int main(int argc, char const *argv[]){
                         perror("error tring to write on the Vx pipe from cmd (Vx++)"); // checking errors
                     }
 
-                    logger("./log_files/command.txt", "0011"); // write a log message
+                    logger(log_pn_command, "0011"); // write a log message
 
                     sleep(1); // wait for one second
                 }
@@ -108,7 +109,7 @@ int main(int argc, char const *argv[]){
                         perror("error tring to write on the Vx pipe from cmd (Vx=0)"); // checking errors
                     }
 
-                    logger("./log_files/command.txt", "0100"); // write a log message
+                    logger(log_pn_command, "0100"); // write a log message
 
                     sleep(1); // wait for one second
                 }
@@ -121,7 +122,7 @@ int main(int argc, char const *argv[]){
                         perror("error tring to write on the Vz pipe from cmd (Vz--)"); // checking errors
                     }
 
-                    logger("./log_files/command.txt", "0101"); // write a log message
+                    logger(log_pn_command, "0101"); // write a log message
 
                     sleep(1); // wait for one second
                 }
@@ -134,7 +135,7 @@ int main(int argc, char const *argv[]){
                         perror("error tring to write on the Vz pipe from cmd (Vz++)"); // checking errors
                     }
 
-                    logger("./log_files/command.txt", "0110"); // write a log message
+                    logger(log_pn_command, "0110"); // write a log message
 
                     sleep(1); // wait for one second
                 }
@@ -147,7 +148,7 @@ int main(int argc, char const *argv[]){
                         perror("error tring to write on the Vz pipe from cmd (Vz=0)"); // checking errors
                     }
 
-                    logger("./log_files/command.txt", "0111"); // write a log message
+                    logger(log_pn_command, "0111"); // write a log message
 
                     sleep(1); // wait for one second
                 }

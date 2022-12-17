@@ -7,16 +7,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 int x_e_in; // declare the file descriptor of the pipe x
 int z_e_in; // declare the file descriptor of the pipe z
-char *x = "/named_pipes/x"; // initialize the pipe x pathname
-char *z = "/named_pipes/z"; // initialize the pipe z pathname
+char *x = "../bin/named_pipes/x"; // initialize the pipe x pathname
+char *z = "../bin/named_pipes/z"; // initialize the pipe z pathname
 
 int x_e_out; // declare the file descriptor of the pipe x_c (corrected)
 int z_e_out; // declare the file descriptor of the pipe z_c (corrected)
-char *x_c = "/named_pipes/x_c"; // initialize the pipe x_c pathname
-char *z_c = "/named_pipes/z_c"; // initialize the pipe x_c pathname
+char *x_c = "../bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+char *z_c = "../bin/named_pipes/z_c"; // initialize the pipe x_c pathname
 
 int x_rcv[1]; // declare the x position receiving buffer
 int z_rcv[1]; // declare the z position receiving buffer
@@ -39,13 +40,13 @@ float z_e; // declare the internal computed and used z
 
 void logger(char * log_pathname, char log_msg[]) {
   double c = (double) (clock() / CLOCKS_PER_SEC);
-  char log_msg_arr[sizeof(&log_msg)+11];
+  char log_msg_arr[strlen(log_msg)+11];
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
     perror("error in logger sprintf");
   }
   int log_fd; // declare the log file descriptor
-  if ((log_fd = open(log_pathname, O_WRONLY | O_CREAT | O_APPEND, 00700)) < 0){ // open the log file to write on it
-    perror("error opening the log file"); // checking errors
+  if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
+    perror(("error opening the log file %s", log_pathname)); // checking errors
   }
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
@@ -53,7 +54,8 @@ void logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]) {
-    //log legend: /n 0001=opened the pipes /n 0010= x received and error computed /n 0011 = x exceed upper bound /n 0100= x exceed lower bound /n 0101= x sended to inspect /n 0110= z received and error computed /n 0111= z exceed upper bound /n 1000= z exceed the lower bound, 1001= z sended to the inspect
+    char * log_pn_error = "../bin/log_files/error.txt"; // initialize the log file path name
+    logger(log_pn_error, "log legend: /n 0001=opened the pipes  0010= x received and error computed  0011 = x exceed upper bound /n 0100= x exceed lower bound  0101= x sended to inspect  0110= z received and error computed /n 0111= z exceed upper bound  1000= z exceed the lower bound  1001= z sended to the inspect");
 
     // open the pipes:
     // input pipes
@@ -78,7 +80,7 @@ int main(int argc, char const *argv[]) {
         perror("error opening the pipe z_c from error"); // checking errors
     }
 
-    logger("./log_files/error.txt", "0001"); // write a log message
+    logger(log_pn_error, "0001"); // write a log message
 
     // computing
     while(1){
@@ -110,21 +112,21 @@ int main(int argc, char const *argv[]) {
                             e = ((rand() % (rnum_u_x + 1))-(rnum_u_x/2)) / 10;
                             x_e = x_rcv[0] + e;
 
-                            logger("./log_files/error.txt", "0010"); // write a log message
+                            logger(log_pn_error, "0010"); // write a log message
 
                             if (x_e > 100){
                                 x_e = 100;
-                                logger("./log_files/error.txt", "0011"); // write a log message
+                                logger(log_pn_error, "0011"); // write a log message
                             }
                             else if (x_e < 0) {
                                 x_e = 0;
-                                logger("./log_files/error.txt", "0100"); // write a log message
+                                logger(log_pn_error, "0100"); // write a log message
                             }
                             x_snd[0] = x_e;
                             if(write(x_e_out, x_snd, sizeof(x_snd)) != 1) { // writing the corrected position on the pipe
                                 perror("error tring to write on the x_c pipe from error proces"); // checking errors
                             }
-                            logger("./log_files/error.txt", "0101"); // write a log message
+                            logger(log_pn_error, "0101"); // write a log message
                         }
                     }
                     if (fd == z_e_in) { // the pipe z_e_in is ready for communicate
@@ -135,21 +137,21 @@ int main(int argc, char const *argv[]) {
                             e = ((rand() % (rnum_u_z + 1))-(rnum_u_z/2)) / 10;
                             z_e = z_rcv[0] + e;
 
-                            logger("./log_files/error.txt", "0110"); // write a log message
+                            logger(log_pn_error, "0110"); // write a log message
 
                             if (z_e >100) {
                                 z_e = 100;
-                                logger("./log_files/error.txt", "0111"); // write a log message
+                                logger(log_pn_error, "0111"); // write a log message
                             }
                             else if (z_e < 0) {
                                 z_e = 0;
-                                logger("./log_files/error.txt", "1000"); // write a log message
+                                logger(log_pn_error, "1000"); // write a log message
                             }
                             z_snd[0] = z_e;
                             if(write(z_e_out, z_snd, sizeof(z_snd)) != 1) { // writing the corrected position on the pipe
                                 perror("error tring to write on the z_c pipe from error proces"); // checking errors
                             }
-                            logger("./log_files/error.txt", "1001"); // write a log message
+                            logger(log_pn_error, "1001"); // write a log message
                         }
                     }
                 }
