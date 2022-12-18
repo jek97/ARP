@@ -149,7 +149,7 @@ int main() {
   }
 
   // opening the signal pipe
-  fd_s = open(ins_s_mass, O_RDONLY); // open the pipe s to read on it
+  fd_s = open(ins_s_mass, O_RDONLY | O_NONBLOCK); // open the pipe s to read on it
     if( ins_s_mass < 0){
         perror("error opening the pipe s from master"); // checking errors
         logger(log_pn_master, "e0011"); // write a error log message
@@ -162,7 +162,7 @@ int main() {
     // menaging the inspect signals:
     // read from the pipe and send the sgnals:
     if(read(fd_s, s_rcv, sizeof(s_rcv)) < 0) { // checking errors
-      perror("error reading the pipe s from master"); 
+      //perror("error reading the pipe s from master"); 
     }
     else if (read(fd_s, s_rcv, sizeof(s_rcv)) > 0){ // otherwise read the signal id
       if (s_rcv[0] = 0) { // the inspect is asking to do the stop operation
@@ -211,7 +211,7 @@ int main() {
     }
     
     t = time(NULL); // obtain the actual time
-    if ((difftime(t, command_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor1_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor2_info.st_mtim.tv_sec) >= 60) | (difftime(t, error_info.st_mtim.tv_sec) >= 60) | (difftime(t, inspect_info.st_mtim.tv_sec) >= 60)) { // checking if one process is not active for 60 seconds
+    /*if ((difftime(t, command_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor1_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor2_info.st_mtim.tv_sec) >= 60) | (difftime(t, error_info.st_mtim.tv_sec) >= 60) | (difftime(t, inspect_info.st_mtim.tv_sec) >= 60)) { // checking if one process is not active for 60 seconds
       if (kill((pid_cmd, pid_m1, pid_m2, pid_err, pid_insp), SIGKILL) < 0) { // kill all the processes
         perror("error while closing all the proces form the watchdogs"); // check errors
         logger(log_pn_master, "e0111"); // write a error log message
@@ -220,7 +220,7 @@ int main() {
         logger(log_pn_master, "0111"); // write a log message
         break; // exit the while loop
       }
-    }
+    }*/
   }
 
   // closure

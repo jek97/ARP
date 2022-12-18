@@ -113,7 +113,7 @@ int main(int argc, char const *argv[]) {
         }
         else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
             logger(log_pn_error, "1011"); // write a log message
-            //perror("timer elapsed in error proces input select without data");
+            perror("timer elapsed in error proces input select without data");
         }
         else if (select((nfds+1), &rfds, NULL, NULL, &tv) > 0){
             logger(log_pn_error, "1010"); // write a log message

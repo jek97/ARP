@@ -30,7 +30,6 @@ int logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]){
-
     int x_ins_in; // declare the file descriptor of the pipe x_c
     int z_ins_in; // declare the file descriptor of the pipe z_c
     int s_ins_out; // declare the file descriptor of the pipe s 
