@@ -11,13 +11,13 @@
 
 int x_e_in; // declare the file descriptor of the pipe x
 int z_e_in; // declare the file descriptor of the pipe z
-char *x = "../bin/named_pipes/x"; // initialize the pipe x pathname
-char *z = "../bin/named_pipes/z"; // initialize the pipe z pathname
+char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
+char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
 
 int x_e_out; // declare the file descriptor of the pipe x_c (corrected)
 int z_e_out; // declare the file descriptor of the pipe z_c (corrected)
-char *x_c = "../bin/named_pipes/x_c"; // initialize the pipe x_c pathname
-char *z_c = "../bin/named_pipes/z_c"; // initialize the pipe x_c pathname
+char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe x_c pathname
 
 int x_rcv[1]; // declare the x position receiving buffer
 int z_rcv[1]; // declare the z position receiving buffer
@@ -54,7 +54,7 @@ void logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]) {
-    char * log_pn_error = "../bin/log_files/error.txt"; // initialize the log file path name
+    char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
     logger(log_pn_error, "log legend: /n 0001=opened the pipes  0010= x received and error computed  0011 = x exceed upper bound /n 0100= x exceed lower bound  0101= x sended to inspect  0110= z received and error computed /n 0111= z exceed upper bound  1000= z exceed the lower bound  1001= z sended to the inspect");
 
     // open the pipes:
@@ -80,7 +80,9 @@ int main(int argc, char const *argv[]) {
         perror("error opening the pipe z_c from error"); // checking errors
     }
 
-    logger(log_pn_error, "0001"); // write a log message
+    if (x_e_in > 0 && z_e_in > 0 && x_e_out > 0 && z_e_out > 0) {
+        logger(log_pn_error, "0001"); // write a log message
+    }
 
     // computing
     while(1){
@@ -88,8 +90,8 @@ int main(int argc, char const *argv[]) {
         FD_ZERO(&rfds); // clear all the fd in the set
         FD_SET(x_e_in, &rfds); // put the fd of x_e_in in the set
         FD_SET(z_e_in, &rfds); // put the fd of z_e_in in the set
-        tv.tv_sec = 5; // set the time interval in seconds
-        tv.tv_usec = 0; // set the time interval in microseconds
+        tv.tv_sec = 0; // set the time interval in seconds
+        tv.tv_usec = 50; // set the time interval in microseconds
 
         // setting up the random variables
         rnum_u_x = (int)(x_rcv[0] * 2); // seting the upper bound for the x error
@@ -97,13 +99,14 @@ int main(int argc, char const *argv[]) {
 
         if (select((nfds+1), &rfds, NULL, NULL, &tv) < 0) { // checking errors
             perror("error in the select of error proces");
+            logger(log_pn_error, "ee");
         }
-        else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
+        /*else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
             perror("timer elapsed in error proces input select without data");
-        }
+        }*/
         else{
             for (fd = 0; fd <= nfds; fd++) {
-                if (FD_ISSET(fd, &rfds)) { // checking if there is a pipe readyfor communications
+                if (FD_ISSET(fd, &rfds) > 0) { // checking if there is a pipe readyfor communications
                     if (fd == x_e_in) { // the pipe x_e_in is ready for communicate
                         if(read(x_e_in, x_rcv, sizeof(x_rcv)) < 0) { // checking errors
                             perror("error reading the pipe x from error proces"); 

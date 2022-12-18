@@ -12,9 +12,9 @@
 int x_ins_in; // declare the file descriptor of the pipe x_c
 int z_ins_in; // declare the file descriptor of the pipe z_c
 int s_ins_out; // declare the file descriptor of the pipe s 
-char *x_c = "../bin/named_pipes/x_c"; // initialize the pipe x_c pathname
-char *z_c = "../bin/named_pipes/z_c"; // initialize the pipe z_c pathname
-char *s = "../bin/named_pipes/s"; // initialize the the pipe s pathname
+char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe z_c pathname
+char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
 
 int x_rcv[1]; // declare the x position receiving buffer
 int z_rcv[1]; // declare the z position receiving buffer
@@ -44,7 +44,7 @@ void logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]){
-    char * log_pn_inspect = "../bin/log_files/inspect.txt"; // initialize the log file path name
+    char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
     logger(log_pn_inspect, "log legend: /n 0001=opened the pipes  0010= x received  0011= z received /n 0100= stop signal sended  0101= reset signal sended");
 
     // Utility variable to avoid trigger resize event on launch
@@ -80,18 +80,18 @@ int main(int argc, char const *argv[]){
         FD_ZERO(&rfds); // clear all the fd in the set
         FD_SET(x_ins_in, &rfds); // put the fd of x_ins_in in the set
         FD_SET(z_ins_in, &rfds); // put the fd of z_ins_in in the set
-        tv.tv_sec = 5; // set the time interval in seconds
-        tv.tv_usec = 0; // set the time interval in microseconds
+        tv.tv_sec = 0; // set the time interval in seconds
+        tv.tv_usec = 50; // set the time interval in microseconds
 
         if (select((nfds+1), &rfds, NULL, NULL, &tv) < 0) { // checking errors
             perror("error in the select of inspect");
         }
-        else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
+        /*else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
             perror("timer elapsed in inspect select without data");
-        }
+        }*/
         else{
             for (fd = 0; fd <= nfds; fd++) {
-                if (FD_ISSET(fd, &rfds)) { // checking if there is a pipe readyfor communications
+                if (FD_ISSET(fd, &rfds) > 0) { // checking if there is a pipe readyfor communications
                     if (fd == x_ins_in) { // the pipe x_ins_in is ready for communicate
                         if(read(x_ins_in, x_rcv, sizeof(x_rcv)) < 0) { // checking errors
                             perror("error reading the pipe x_c from inspect"); 
@@ -169,7 +169,7 @@ int main(int argc, char const *argv[]){
         }
         
         // To be commented in final version...
-        switch (cmd)
+        /*switch (cmd)
         {
             case KEY_LEFT:
                 x--;
@@ -185,7 +185,7 @@ int main(int argc, char const *argv[]){
                 break;
             default:
                 break;
-        }
+        }*/
         
         // Update UI
         update_console_ui(&x, &z);

@@ -11,14 +11,14 @@
 int Vx_m1; // inizialize the file descriptor of the pipe Vx
 int x_m1; // inizialize the file descriptor of the pipe x
 
-char *Vx = "../bin/named_pipes/Vx";// initialize the pipe Vx pathname
-char *x = "../bin/named_pipes/x"; // initialize the pipe x pathname
+char *Vx = "./bin/named_pipes/Vx";// initialize the pipe Vx pathname
+char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
 int Vx_rcv[1]; // initialize the buffer where i will store the received variable from the pipe Vx
 int x_snd[1]; // initialize the buffer where i will send the position x
 
 int x_i = 0; // initialize position along x axis
 int Vx_i = 0; // initialize the velocity along x
-int T = 10; // initialize the time period of the speed
+int T = 1; // initialize the time period of the speed
 
 void sig_handler (int signo) {
     if (signo == SIGUSR1) { // stop signal received
@@ -46,7 +46,7 @@ void logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]) {
-    char * log_pn_motor1 = "../bin/log_files/motor1.txt"; // initialize the log file path name
+    char * log_pn_motor1 = "./bin/log_files/motor1.txt"; // initialize the log file path name
     logger(log_pn_motor1, "log legend: /n 0001=opened the pipes  0010= no message received  0011 = decrease velocity /n 0100= velocity=0  0101= increase velocity  0110= reached upper bound /n 0111= reached lower bound  1000= writed the position on the pipe");
 
     // condition for the signal:
@@ -105,11 +105,12 @@ int main(int argc, char const *argv[]) {
             x_i = 0;
             logger(log_pn_motor1, "0111"); // write a log message
         }
+        
         sleep(T);
 
         x_snd[0] = x_i; // putting the position x_i in the buffer to send it
 
-        if(write(x_m1, x_snd, sizeof(x_snd)) != 1) { // writing the position on the pipe
+        if(write(x_m1, x_snd, sizeof(x_snd)) != sizeof(x_snd)) { // writing the position on the pipe
             perror("error tring to write on the x pipe from m1"); // checking errors
         }
         logger(log_pn_motor1, "1000"); // write a log message

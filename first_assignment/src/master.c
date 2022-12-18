@@ -54,38 +54,38 @@ void logger(char * log_pathname, char log_msg[]) {
 }
 
 int main() {
-  char * log_pn_master = "./log_files/master.txt"; // initialize the log file path name
-  char * log_pn_command = "../bin/log_files/command.txt"; // initialize the log file path name
-  char * log_pn_motor1 = "../bin/log_files/motor1.txt"; // initialize the log file path name
-  char * log_pn_motor2 = "../bin/log_files/motor2.txt"; // initialize the log file path name
-  char * log_pn_error = "../bin/log_files/error.txt"; // initialize the log file path name
-  char * log_pn_inspect = "../bin/log_files/inspect.txt"; // initialize the log file path name
+  char * log_pn_master = "./bin/log_files/master.txt"; // initialize the log file path name
+  char * log_pn_command = "./bin/log_files/command.txt"; // initialize the log file path name
+  char * log_pn_motor1 = "./bin/log_files/motor1.txt"; // initialize the log file path name
+  char * log_pn_motor2 = "./bin/log_files/motor2.txt"; // initialize the log file path name
+  char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
+  char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
 
   logger(log_pn_master, "log legend: /n 0001= opened the pipes  0010= spawned the processes  0100= stop signal sended /n 0101= reset signal sended  0111= watchdogs has killed all the processes");
   // declering the mkpipe() arguments:
   // % from cmd to m1, m2:
-  char *cmd_Vx_m1 = "../bin/named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
+  char *cmd_Vx_m1 = "./bin/named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
   mode_t cmd_Vx_m1_mode = 0666; // mode of the pipe from cmd to m1 through Vx
   
-  char *cmd_Vz_m2 = "../bin/named_pipes/Vz"; // pathname of the pipe from cmd to m2 through Vz
+  char *cmd_Vz_m2 = "./bin/named_pipes/Vz"; // pathname of the pipe from cmd to m2 through Vz
   mode_t cmd_Vz_m2_mode = 0666; // mode of the pipe from cmd to m2 through Vz
 
   // % from m1,m2 to error:
-  char *m1_x_err = "../bin/named_pipes/x"; // pathname of the pipe from m1 to error through x
+  char *m1_x_err = "./bin/named_pipes/x"; // pathname of the pipe from m1 to error through x
   mode_t m1_x_err_mode = 0666; // mode of the pipe from m1 to error through x
 
-  char *m2_z_err = "../bin/named_pipes/z"; // pathname of the pipe from m2 to error through z
+  char *m2_z_err = "./bin/named_pipes/z"; // pathname of the pipe from m2 to error through z
   mode_t m2_z_err_mode = 0666; // mode of the pipe from m2 to error through z
 
   // % form error to inspect:
-  char *err_x_c_ins = "../bin/named_pipes/x_c"; // pathname of the pipe from error to inspect through x_c
+  char *err_x_c_ins = "./bin/named_pipes/x_c"; // pathname of the pipe from error to inspect through x_c
   mode_t err_x_c_ins_mode = 0666; // mode of the pipe from error to inspect through x_c
 
-  char *err_z_c_ins = "../bin/named_pipes/z_c"; // pathname of the pipe from error to inspect through z_c
+  char *err_z_c_ins = "./bin/named_pipes/z_c"; // pathname of the pipe from error to inspect through z_c
   mode_t err_z_c_ins_mode = 0666; // mode of the pipe from error to inspect through z_c
 
   // % from inspect to master for the signals:
-  char *ins_s_mass = "../bin/named_pipes/s"; // pathname of the pipe from inspect to master through s
+  char *ins_s_mass = "./bin/named_pipes/s"; // pathname of the pipe from inspect to master through s
   mode_t ins_s_mass_mode = 0666; // mode of the pipe from inspect to master through s
 
   int fd_s; // declare the file descriptor for the pipe s
@@ -106,28 +106,29 @@ int main() {
   logger(log_pn_master, "0001"); // write a log message
  
   // declaring the spawn() arguments:
-  char * arg_list_command[] = { "../bin/konsole", "-e", "../bin/command", NULL };
-  char * arg_list_m1[] = { "../bin/motor1", "-e", "../bin/motor1", NULL };
-  char * arg_list_m2[] = { "../bin/motor2", "-e", "../bin/motor2", NULL };
-  char * arg_list_err[] = { "../bin/error", "-e", "../bin/error", NULL };
-  char * arg_list_insp[] = { "../bin/konsole", "-e", "../bin/inspection", NULL };
+  char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
+  char * arg_list_m1[] = { "./bin/motor1", "-e", "./bin/motor1", NULL };
+  char * arg_list_m2[] = { "./bin/motor2", "-e", "./bin/motor2", NULL };
+  char * arg_list_err[] = { "./bin/error", "-e", "./bin/error", NULL };
+  char * arg_list_insp[] = { "/usr/bin/konsole", "-e", "./bin/inspection", NULL };
 
-  pid_t pid_cmd = spawn("../bin/konsole", arg_list_command);
-  pid_t pid_m1 = spawn("../bin/motor1", arg_list_m1);
-  pid_t pid_m2 = spawn("../bin/motor2", arg_list_m2);
-  pid_t pid_err = spawn("../bin/error", arg_list_err);
-  pid_t pid_insp = spawn("../bin/konsole", arg_list_insp);
+  pid_t pid_cmd = spawn("/usr/bin/konsole", arg_list_command);
+  pid_t pid_m1 = spawn("./bin/motor1", arg_list_m1);
+  pid_t pid_m2 = spawn("./bin/motor2", arg_list_m2);
+  pid_t pid_err = spawn("./bin/error", arg_list_err);
+  pid_t pid_insp = spawn("/usr/bin/konsole", arg_list_insp);
 
   logger(log_pn_master, "0010"); // write a log message
 
   // menaging the inspect signals:
   // open the pipes for the signals "stop" and "reset":
   fd_s = open(ins_s_mass, O_RDONLY); // open the pipe s to read on it
-    if( ins_s_mass < 0){
-        perror("error opening the pipe s from master"); // checking errors
-    }
-  
-  logger(log_pn_master, "0011"); // write a log message
+  if( ins_s_mass < 0){
+      perror("error opening the pipe s from master"); // checking errors
+  }
+  else {
+    logger(log_pn_master, "0011"); // write a log message
+  }
 
   while(1) {
     // read from the pipe and send the sgnals:
@@ -139,16 +140,17 @@ int main() {
         if (kill((pid_cmd, pid_m1, pid_m2), SIGUSR1) < 0) {
           perror("error while sending the signal to the cmd, m1, m2 from master");
         }
-
-        logger(log_pn_master, "0100"); // write a log message
-
+        else {
+          logger(log_pn_master, "0100"); // write a log message
+        }
       }
       else if (s_rcv[0] = 1) { // the inspect is asking to do the reset operation
         if (kill((pid_cmd, pid_m1, pid_m2), SIGUSR2) < 0) {
           perror("error while sending the signal to the cmd, m1, m2 from master");
         }
-
-        logger(log_pn_master, "0101"); // write a log message
+        else {
+          logger(log_pn_master, "0101"); // write a log message
+        }
 
       }
     }

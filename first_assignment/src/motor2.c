@@ -11,14 +11,14 @@
 int Vz_m2; // inizialize the file descriptor of the pipe Vz
 int z_m2; // inizialize the file descriptor of the pipe z
 
-char *Vz = "../bin/named_pipes/Vz";// initialize the pipe Vz pathname
-char *z = "../bin/named_pipes/z"; // initialize the pipe z pathname
+char *Vz = "./bin/named_pipes/Vz";// initialize the pipe Vz pathname
+char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
 int Vz_rcv[1]; // initialize the buffer where i will store the received variable from the pipe Vz
 int z_snd[1]; // initialize the buffer where i will send the position z
 
 int z_i = 0; // initialize position along z azis
 int Vz_i = 0; // initialize the velocity along z
-int T = 10; // initialize the time period of the speed
+int T = 1; // initialize the time period of the speed
 
 void sig_handler (int signo) {
     if (signo == SIGUSR1) { // stop signal received
@@ -46,7 +46,7 @@ void logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]) {
-    char * log_pn_motor2 = "../bin/log_files/motor2.txt"; // initialize the log file path name
+    char * log_pn_motor2 = "./bin/log_files/motor2.txt"; // initialize the log file path name
     logger(log_pn_motor2, "log legend: /n 0001=opened the pipes  0010= no message received  0011 = decrease velocity /n 0100= velocity=0  0101= increase velocity  0110= reached upper bound /n 0111= reached lower bound  1000= writed the position on the pipe");
 
     // condition for the signal:
@@ -109,7 +109,7 @@ int main(int argc, char const *argv[]) {
 
         z_snd[0] = z_i; // putting the position z_i in the buffer to send it
 
-        if(write(z_m2, z_snd, sizeof(z_snd)) != 1) { // writing the position on the pipe
+        if(write(z_m2, z_snd, sizeof(z_snd)) != sizeof(z_snd)) { // writing the position on the pipe
             perror("error tring to write on the z pipe from m2"); // checking errors
         }
         logger(log_pn_motor2, "1000"); // write a log message
