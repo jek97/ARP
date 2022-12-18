@@ -14,6 +14,9 @@ int mkpipe(const char *pathname, mode_t mode) { // function to create a named pi
   pipe = mkfifo(pathname,mode); // actually create the pipe
   if(pipe < 0) { // checking possible errors
     perror("error while creating the named pipe");
+    return -1;
+  }
+  else {
     return 1;
   }
 }
@@ -24,7 +27,7 @@ int spawn(const char * program, char * arg_list[]) {
 
   if(child_pid < 0) {
     perror("Error while forking...");
-    return 1;
+    return -1;
   }
 
   else if(child_pid != 0) {
@@ -34,26 +37,32 @@ int spawn(const char * program, char * arg_list[]) {
   else {
     if(execvp (program, arg_list) == 0);
     perror("Exec failed");
-    return 1;
+    return -1;
   }
 }
 
-void logger(char * log_pathname, char log_msg[]) {
+int logger(char * log_pathname, char log_msg[]) {
   double c = (double) (clock() / CLOCKS_PER_SEC);
   char log_msg_arr[strlen(log_msg)+11];
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
     perror("error in logger sprintf");
+    return -1;
   }
   int log_fd; // declare the log file descriptor
   if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
     perror(("error opening the log file %s", log_pathname)); // checking errors
+    return -1;
   }
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
+      return -1;
   }
+  close(log_fd);
+  return 1;
 }
 
 int main() {
+  //logger:
   char * log_pn_master = "./bin/log_files/master.txt"; // initialize the log file path name
   char * log_pn_command = "./bin/log_files/command.txt"; // initialize the log file path name
   char * log_pn_motor1 = "./bin/log_files/motor1.txt"; // initialize the log file path name
@@ -61,30 +70,39 @@ int main() {
   char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
   char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
 
-  logger(log_pn_master, "log legend: /n 0001= opened the pipes  0010= spawned the processes  0100= stop signal sended /n 0101= reset signal sended  0111= watchdogs has killed all the processes");
+  remove(log_pn_master);
+  logger(log_pn_master, "log legend: 0001= opened the pipes  0010= spawned the processes 0011= opened the signal pipe  0100= stop signal sended  0101= reset signal sended  0111= watchdogs has killed all the processes.    the log number with an e in front means the relative operation failed");
+  
   // declering the mkpipe() arguments:
   // % from cmd to m1, m2:
+  int cmd_Vx_m1_r; // inizialize the returned valeu from mkpipe
   char *cmd_Vx_m1 = "./bin/named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
   mode_t cmd_Vx_m1_mode = 0666; // mode of the pipe from cmd to m1 through Vx
   
+  int cmd_Vz_m2_r; // inizialize the returned valeu from mkpipe
   char *cmd_Vz_m2 = "./bin/named_pipes/Vz"; // pathname of the pipe from cmd to m2 through Vz
   mode_t cmd_Vz_m2_mode = 0666; // mode of the pipe from cmd to m2 through Vz
 
   // % from m1,m2 to error:
+  int m1_x_err_r; // inizialize the returned valeu from mkpipe
   char *m1_x_err = "./bin/named_pipes/x"; // pathname of the pipe from m1 to error through x
   mode_t m1_x_err_mode = 0666; // mode of the pipe from m1 to error through x
 
+  int m2_z_err_r; // inizialize the returned valeu from mkpipe
   char *m2_z_err = "./bin/named_pipes/z"; // pathname of the pipe from m2 to error through z
   mode_t m2_z_err_mode = 0666; // mode of the pipe from m2 to error through z
 
   // % form error to inspect:
+  int err_x_c_ins_r; // inizialize the returned valeu from mkpipe
   char *err_x_c_ins = "./bin/named_pipes/x_c"; // pathname of the pipe from error to inspect through x_c
   mode_t err_x_c_ins_mode = 0666; // mode of the pipe from error to inspect through x_c
 
+  int err_z_c_ins_r; // inizialize the returned valeu from mkpipe
   char *err_z_c_ins = "./bin/named_pipes/z_c"; // pathname of the pipe from error to inspect through z_c
   mode_t err_z_c_ins_mode = 0666; // mode of the pipe from error to inspect through z_c
 
   // % from inspect to master for the signals:
+  int ins_s_mass_r; // inizialize the returned valeu from mkpipe
   char *ins_s_mass = "./bin/named_pipes/s"; // pathname of the pipe from inspect to master through s
   mode_t ins_s_mass_mode = 0666; // mode of the pipe from inspect to master through s
 
@@ -92,18 +110,23 @@ int main() {
   int s_rcv[1]; // declare the array where i will store the signal id
   
   // opening the named pipes:
-  mkpipe(cmd_Vx_m1, cmd_Vx_m1_mode); // creating the named pipe for communicate the speed along x between the cmd and the motor1 
-  mkpipe(cmd_Vz_m2, cmd_Vz_m2_mode); // creating the named pipe for communicate the speed along z between the cmd and the motor2
+  cmd_Vx_m1_r = mkpipe(cmd_Vx_m1, cmd_Vx_m1_mode); // creating the named pipe for communicate the speed along x between the cmd and the motor1 
+  cmd_Vz_m2_r = mkpipe(cmd_Vz_m2, cmd_Vz_m2_mode); // creating the named pipe for communicate the speed along z between the cmd and the motor2
 
-  mkpipe(m1_x_err, m1_x_err_mode); // creating the named pipe for communicate the position along x between the m1 and the error
-  mkpipe(m2_z_err, m2_z_err_mode); // creating the named pipe for communicate the position along z between the m2 and the error
+  m1_x_err_r = mkpipe(m1_x_err, m1_x_err_mode); // creating the named pipe for communicate the position along x between the m1 and the error
+  m2_z_err_r = mkpipe(m2_z_err, m2_z_err_mode); // creating the named pipe for communicate the position along z between the m2 and the error
 
-  mkpipe(err_x_c_ins, err_x_c_ins_mode); // creating the named pipe for communicate the corrected position along x_c between the error and the inspect
-  mkpipe(err_z_c_ins, err_z_c_ins_mode); // creating the named pipe for communicate the corrected position along z_c between the error and the inspect
+  err_x_c_ins_r = mkpipe(err_x_c_ins, err_x_c_ins_mode); // creating the named pipe for communicate the corrected position along x_c between the error and the inspect
+  err_z_c_ins_r = mkpipe(err_z_c_ins, err_z_c_ins_mode); // creating the named pipe for communicate the corrected position along z_c between the error and the inspect
 
-  mkpipe(ins_s_mass, ins_s_mass_mode); // creating the named pipe for communicate the signal id from the inspect to the master
-
-  logger(log_pn_master, "0001"); // write a log message
+  ins_s_mass_r = mkpipe(ins_s_mass, ins_s_mass_mode); // creating the named pipe for communicate the signal id from the inspect to the master
+  
+  if (cmd_Vx_m1_r > 0 && cmd_Vz_m2_r > 0 && m1_x_err_r > 0 && m2_z_err_r > 0 && err_x_c_ins_r > 0 && err_z_c_ins_r > 0 && ins_s_mass_r > 0) {
+    logger(log_pn_master, "0001"); // write a log message
+  }
+  else {
+    logger(log_pn_master, "e0001"); // write a error log message
+  }
  
   // declaring the spawn() arguments:
   char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
@@ -118,27 +141,34 @@ int main() {
   pid_t pid_err = spawn("./bin/error", arg_list_err);
   pid_t pid_insp = spawn("/usr/bin/konsole", arg_list_insp);
 
-  logger(log_pn_master, "0010"); // write a log message
-
-  // menaging the inspect signals:
-  // open the pipes for the signals "stop" and "reset":
-  fd_s = open(ins_s_mass, O_RDONLY); // open the pipe s to read on it
-  if( ins_s_mass < 0){
-      perror("error opening the pipe s from master"); // checking errors
+  if(pid_cmd > 0 && pid_m1 > 0 && pid_m2 > 0 && pid_err > 0 && pid_insp > 0) {
+    logger(log_pn_master, "0010"); // write a log message
   }
   else {
-    logger(log_pn_master, "0011"); // write a log message
+    logger(log_pn_master, "e0010"); // write a error log message
   }
 
+  // opening the signal pipe
+  fd_s = open(ins_s_mass, O_RDONLY); // open the pipe s to read on it
+    if( ins_s_mass < 0){
+        perror("error opening the pipe s from master"); // checking errors
+        logger(log_pn_master, "e0011"); // write a error log message
+    }
+    else {
+      logger(log_pn_master, "0011"); // write a log message
+    }
+
   while(1) {
+    // menaging the inspect signals:
     // read from the pipe and send the sgnals:
     if(read(fd_s, s_rcv, sizeof(s_rcv)) < 0) { // checking errors
       perror("error reading the pipe s from master"); 
     }
-    else if (read(fd_s, s_rcv, sizeof(s_rcv)) > 0) { // otherwise read the signal id
+    else if (read(fd_s, s_rcv, sizeof(s_rcv)) > 0){ // otherwise read the signal id
       if (s_rcv[0] = 0) { // the inspect is asking to do the stop operation
         if (kill((pid_cmd, pid_m1, pid_m2), SIGUSR1) < 0) {
           perror("error while sending the signal to the cmd, m1, m2 from master");
+          logger(log_pn_master, "e0100"); // write a error log message
         }
         else {
           logger(log_pn_master, "0100"); // write a log message
@@ -147,6 +177,7 @@ int main() {
       else if (s_rcv[0] = 1) { // the inspect is asking to do the reset operation
         if (kill((pid_cmd, pid_m1, pid_m2), SIGUSR2) < 0) {
           perror("error while sending the signal to the cmd, m1, m2 from master");
+          logger(log_pn_master, "e0101"); // write a error log message
         }
         else {
           logger(log_pn_master, "0101"); // write a log message
@@ -183,6 +214,7 @@ int main() {
     if ((difftime(t, command_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor1_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor2_info.st_mtim.tv_sec) >= 60) | (difftime(t, error_info.st_mtim.tv_sec) >= 60) | (difftime(t, inspect_info.st_mtim.tv_sec) >= 60)) { // checking if one process is not active for 60 seconds
       if (kill((pid_cmd, pid_m1, pid_m2, pid_err, pid_insp), SIGKILL) < 0) { // kill all the processes
         perror("error while closing all the proces form the watchdogs"); // check errors
+        logger(log_pn_master, "e0111"); // write a error log message
       }
       else {
         logger(log_pn_master, "0111"); // write a log message

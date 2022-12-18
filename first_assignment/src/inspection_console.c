@@ -9,43 +9,50 @@
 #include <stdlib.h>
 #include <time.h>
 
-int x_ins_in; // declare the file descriptor of the pipe x_c
-int z_ins_in; // declare the file descriptor of the pipe z_c
-int s_ins_out; // declare the file descriptor of the pipe s 
-char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
-char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe z_c pathname
-char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
-
-int x_rcv[1]; // declare the x position receiving buffer
-int z_rcv[1]; // declare the z position receiving buffer
-int s_snd[1]; // declare the s signal sending buffer
-
-fd_set rfds; // declare the select mode
-struct timeval tv; // declare the time interval of the select function
-int retval; // declare the returned valeu
-int nfds = 1; // initialize number of fd starting from 0
-int fd; // declare the counter for FD_ISSET
-
-float x, z; // End-effector coordinates
-
-void logger(char * log_pathname, char log_msg[]) {
+int logger(char * log_pathname, char log_msg[]) {
   double c = (double) (clock() / CLOCKS_PER_SEC);
   char log_msg_arr[strlen(log_msg)+11];
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
     perror("error in logger sprintf");
+    return -1;
   }
   int log_fd; // declare the log file descriptor
   if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
     perror(("error opening the log file %s", log_pathname)); // checking errors
+    return -1;
   }
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
+      return -1;
   }
+  close(log_fd);
+  return 1;
 }
 
 int main(int argc, char const *argv[]){
+
+    int x_ins_in; // declare the file descriptor of the pipe x_c
+    int z_ins_in; // declare the file descriptor of the pipe z_c
+    int s_ins_out; // declare the file descriptor of the pipe s 
+    char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+    char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe z_c pathname
+    char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
+
+    int x_rcv[1]; // declare the x position receiving buffer
+    int z_rcv[1]; // declare the z position receiving buffer
+    int s_snd[1]; // declare the s signal sending buffer
+
+    fd_set rfds; // declare the select mode
+    struct timeval tv; // declare the time interval of the select function
+    int retval; // declare the returned valeu
+    int nfds = 1; // initialize number of fd starting from 0
+    int fd; // declare the counter for FD_ISSET
+
+    float x, z; // End-effector coordinates
+
     char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
-    logger(log_pn_inspect, "log legend: /n 0001=opened the pipes  0010= x received  0011= z received /n 0100= stop signal sended  0101= reset signal sended");
+    remove(log_pn_inspect);
+    logger(log_pn_inspect, "log legend:  0001=opened the pipes  0010= x received  0011= z received  0100= stop signal sended  0101= reset signal sended  1010= timer elapsed without new messages.    the log number with an e in front means the relative operation failed");
 
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
@@ -68,7 +75,12 @@ int main(int argc, char const *argv[]){
         perror("error opening the pipe s from inspection"); // checking errors
     }
 
-    logger(log_pn_inspect, "0001"); // write a log message
+    if (x_ins_in > 0 && z_ins_in > 0 && s_ins_out > 0) {
+        logger(log_pn_inspect, "0001"); // write a log message
+    }
+    else {
+        logger(log_pn_inspect, "e0001"); // write a error log message
+    }
 
     // Initialize User Interface 
     init_console_ui();
@@ -85,35 +97,37 @@ int main(int argc, char const *argv[]){
 
         if (select((nfds+1), &rfds, NULL, NULL, &tv) < 0) { // checking errors
             perror("error in the select of inspect");
+            logger(log_pn_inspect, "e0010"); // write a error log message
         }
-        /*else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
-            perror("timer elapsed in inspect select without data");
-        }*/
-        else{
-            for (fd = 0; fd <= nfds; fd++) {
-                if (FD_ISSET(fd, &rfds) > 0) { // checking if there is a pipe readyfor communications
-                    if (fd == x_ins_in) { // the pipe x_ins_in is ready for communicate
-                        if(read(x_ins_in, x_rcv, sizeof(x_rcv)) < 0) { // checking errors
-                            perror("error reading the pipe x_c from inspect"); 
-                        }
-                        else if (read(x_ins_in, x_rcv, sizeof(x_rcv)) > 0) { // otherwise read the position x
-                            x = x_rcv[0];
+        else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
+            //perror("timer elapsed in inspect select without data");
+            logger(log_pn_inspect, "1010"); // write a error log message
+        }
+        else if (select((nfds+1), &rfds, NULL, NULL, &tv) > 0) {
+            if (FD_ISSET(x_ins_in, &rfds) > 0) { // the pipe x_ins_in is ready for communicate
+                if(read(x_ins_in, x_rcv, sizeof(x_rcv)) < 0) { // checking errors
+                    perror("error reading the pipe x_c from inspect"); 
+                    logger(log_pn_inspect, "e0010"); // write a error log message
+                }
+                else if (read(x_ins_in, x_rcv, sizeof(x_rcv)) > 0) { // otherwise read the position x
+                    x = x_rcv[0];
 
-                            logger(log_pn_inspect, "0010"); // write a log message
-                        }
-                    }
-                    else if (fd == z_ins_in) { // the pipe z_ins_in is ready for communicate
-                        if(read(z_ins_in, z_rcv, sizeof(z_rcv)) < 0) { // checking errors
-                            perror("error reading the pipe z_c from inspect"); 
-                        }
-                        else if (read(z_ins_in, z_rcv, sizeof(z_rcv)) > 0) { // otherwise read the position z
-                            z = z_rcv[0];
-
-                            logger(log_pn_inspect, "0011"); // write a log message
-                        }
-                    }
+                    logger(log_pn_inspect, "0010"); // write a log message
                 }
             }
+            
+            else if (FD_ISSET(z_ins_in, &rfds) > 0) { // the pipe z_ins_in is ready for communicate
+                if(read(z_ins_in, z_rcv, sizeof(z_rcv)) < 0) { // checking errors
+                    perror("error reading the pipe z_c from inspect");
+                    logger(log_pn_inspect, "e0011"); // write a error log message 
+                }
+                else if (read(z_ins_in, z_rcv, sizeof(z_rcv)) > 0) { // otherwise read the position z
+                    z = z_rcv[0];
+
+                    logger(log_pn_inspect, "0011"); // write a log message
+                }
+            }
+
         }
 
         // Get mouse/resize commands in non-blocking mode...
@@ -141,13 +155,13 @@ int main(int argc, char const *argv[]){
                     s_snd[0] = 0; // setting the signal id to send
                     if(write(s_ins_out, s_snd, sizeof(s_snd)) != 1) { // writing the signal id on the pipe
                         perror("error tring to write on the s pipe from inspect"); // checking errors
+                        logger(log_pn_inspect, "e0100"); // write a error log message
                     }
-                    logger(log_pn_inspect, "0100"); // write a log message
+                    else {
+                        logger(log_pn_inspect, "0100"); // write a log message
+                    }
 
                     sleep(1);
-                    for(int j = 0; j < COLS; j++) {
-                        mvaddch(LINES - 1, j, ' ');
-                    }
                 }
 
                 // RESET button pressed
@@ -157,36 +171,17 @@ int main(int argc, char const *argv[]){
                     s_snd[0] = 1; // setting the signal id to send
                     if(write(s_ins_out, s_snd, sizeof(s_snd)) != 1) { // writing the signal id on the pipe
                         perror("error tring to write on the s pipe from inspect"); // checking errors
+                        logger(log_pn_inspect, "e0101"); // write a error log message
                     }
-                    logger(log_pn_inspect, "0101"); // write a log message
+                    else {
+                        logger(log_pn_inspect, "0101"); // write a log message
+                    }
 
                     sleep(1);
-                    for(int j = 0; j < COLS; j++) {
-                        mvaddch(LINES - 1, j, ' ');
-                    }
                 }
             }
         }
-        
-        // To be commented in final version...
-        /*switch (cmd)
-        {
-            case KEY_LEFT:
-                x--;
-                break;
-            case KEY_RIGHT:
-                x++;
-                break;
-            case KEY_UP:
-                z--;
-                break;
-            case KEY_DOWN:
-                z++;
-                break;
-            default:
-                break;
-        }*/
-        
+    
         // Update UI
         update_console_ui(&x, &z);
 	}

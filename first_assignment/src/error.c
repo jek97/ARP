@@ -9,53 +9,60 @@
 #include <time.h>
 #include <string.h>
 
-int x_e_in; // declare the file descriptor of the pipe x
-int z_e_in; // declare the file descriptor of the pipe z
-char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
-char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
-
-int x_e_out; // declare the file descriptor of the pipe x_c (corrected)
-int z_e_out; // declare the file descriptor of the pipe z_c (corrected)
-char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
-char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe x_c pathname
-
-int x_rcv[1]; // declare the x position receiving buffer
-int z_rcv[1]; // declare the z position receiving buffer
-
-int x_snd[1]; // declare the x corrected position sending buffer
-int z_snd[1]; // declare the z corrected position sending buffer
-
-fd_set rfds; // declare the select mode
-struct timeval tv; // declare the time interval of the select function
-int retval; // declare the returned valeu
-int nfds = 1; // initialize number of fd starting from 0
-int fd; // declare the counter for FD_ISSET
-
-float e; // declare the random number
-int rnum_u_x; // declare the upper bound for the random number of x
-int rnum_u_z; // declare the upper bound for the random number of z
-
-float x_e; // declare the internal computed and used x
-float z_e; // declare the internal computed and used z
-
-void logger(char * log_pathname, char log_msg[]) {
+int logger(char * log_pathname, char log_msg[]) {
   double c = (double) (clock() / CLOCKS_PER_SEC);
   char log_msg_arr[strlen(log_msg)+11];
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
     perror("error in logger sprintf");
+    return -1;
   }
   int log_fd; // declare the log file descriptor
   if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
     perror(("error opening the log file %s", log_pathname)); // checking errors
+    return -1;
   }
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
+      return -1;
   }
+  close(log_fd);
+  return 1;
 }
 
 int main(int argc, char const *argv[]) {
+
+    int x_e_in; // declare the file descriptor of the pipe x
+    int z_e_in; // declare the file descriptor of the pipe z
+    char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
+    char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
+
+    int x_e_out; // declare the file descriptor of the pipe x_c (corrected)
+    int z_e_out; // declare the file descriptor of the pipe z_c (corrected)
+    char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+    char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe x_c pathname
+
+    int x_rcv[1]; // declare the x position receiving buffer
+    int z_rcv[1]; // declare the z position receiving buffer
+
+    int x_snd[1]; // declare the x corrected position sending buffer
+    int z_snd[1]; // declare the z corrected position sending buffer
+
+    fd_set rfds; // declare the select mode
+    struct timeval tv; // declare the time interval of the select function
+    int retval; // declare the returned valeu
+    int nfds = 1; // initialize number of fd starting from 0
+    int fd; // declare the counter for FD_ISSET
+
+    float e; // declare the random number
+    int rnum_u_x; // declare the upper bound for the random number of x
+    int rnum_u_z; // declare the upper bound for the random number of z
+
+    float x_e; // declare the internal computed and used x
+    float z_e; // declare the internal computed and used z
+
     char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
-    logger(log_pn_error, "log legend: /n 0001=opened the pipes  0010= x received and error computed  0011 = x exceed upper bound /n 0100= x exceed lower bound  0101= x sended to inspect  0110= z received and error computed /n 0111= z exceed upper bound  1000= z exceed the lower bound  1001= z sended to the inspect");
+    remove(log_pn_error);
+    logger(log_pn_error, "log legend:  0001=opened the pipes  0010= x received and error computed  0011 = x exceed upper bound  0100= x exceed lower bound  0101= x sended to inspect  0110= z received and error computed  0111= z exceed upper bound  1000= z exceed the lower bound  1001= z sended to the inspect  1010= selet sucseed  1011= select timer elapsed before receiving data.    the log number with an e in front means the relative operation failed");
 
     // open the pipes:
     // input pipes
@@ -83,6 +90,9 @@ int main(int argc, char const *argv[]) {
     if (x_e_in > 0 && z_e_in > 0 && x_e_out > 0 && z_e_out > 0) {
         logger(log_pn_error, "0001"); // write a log message
     }
+    else {
+        logger(log_pn_error, "e0001"); // write a error log message
+    }
 
     // computing
     while(1){
@@ -99,63 +109,71 @@ int main(int argc, char const *argv[]) {
 
         if (select((nfds+1), &rfds, NULL, NULL, &tv) < 0) { // checking errors
             perror("error in the select of error proces");
-            logger(log_pn_error, "ee");
+            logger(log_pn_error, "e1010"); // write a error log message
         }
-        /*else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
-            perror("timer elapsed in error proces input select without data");
-        }*/
-        else{
-            for (fd = 0; fd <= nfds; fd++) {
-                if (FD_ISSET(fd, &rfds) > 0) { // checking if there is a pipe readyfor communications
-                    if (fd == x_e_in) { // the pipe x_e_in is ready for communicate
-                        if(read(x_e_in, x_rcv, sizeof(x_rcv)) < 0) { // checking errors
-                            perror("error reading the pipe x from error proces"); 
-                        }
-                        else if (read(x_e_in, x_rcv, sizeof(x_rcv)) > 0) { // otherwise read the position x and add the correction of the error
-                            e = ((rand() % (rnum_u_x + 1))-(rnum_u_x/2)) / 10;
-                            x_e = x_rcv[0] + e;
+        else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
+            logger(log_pn_error, "1011"); // write a log message
+            //perror("timer elapsed in error proces input select without data");
+        }
+        else if (select((nfds+1), &rfds, NULL, NULL, &tv) > 0){
+            logger(log_pn_error, "1010"); // write a log message
+            if (FD_ISSET(x_e_in, &rfds) > 0) { // the pipe x_e_in is ready for communicate
+                if(read(x_e_in, x_rcv, sizeof(x_rcv)) < 0) { // checking errors
+                    perror("error reading the pipe x from error proces");
+                    logger(log_pn_error, "e0010"); // write a error log message
+                }
+                else if (read(x_e_in, x_rcv, sizeof(x_rcv)) > 0) { // otherwise read the position x and add the correction of the error
+                    e = ((rand() % (rnum_u_x + 1))-(rnum_u_x/2)) / 10;
+                    x_e = x_rcv[0] + e;
 
-                            logger(log_pn_error, "0010"); // write a log message
+                    logger(log_pn_error, "0010"); // write a log message
 
-                            if (x_e > 100){
-                                x_e = 100;
-                                logger(log_pn_error, "0011"); // write a log message
-                            }
-                            else if (x_e < 0) {
-                                x_e = 0;
-                                logger(log_pn_error, "0100"); // write a log message
-                            }
-                            x_snd[0] = x_e;
-                            if(write(x_e_out, x_snd, sizeof(x_snd)) != 1) { // writing the corrected position on the pipe
-                                perror("error tring to write on the x_c pipe from error proces"); // checking errors
-                            }
-                            logger(log_pn_error, "0101"); // write a log message
-                        }
+                    if (x_e > 100){
+                        x_e = 100;
+                        logger(log_pn_error, "0011"); // write a log message
                     }
-                    if (fd == z_e_in) { // the pipe z_e_in is ready for communicate
-                        if(read(z_e_in, z_rcv, sizeof(z_rcv)) < 0) { // checking errors
-                            perror("error reading the pipe z from error proces"); 
-                        }
-                        else if (read(z_e_in, z_rcv, sizeof(z_rcv)) > 0) { // otherwise read the position z and add the correction of the error
-                            e = ((rand() % (rnum_u_z + 1))-(rnum_u_z/2)) / 10;
-                            z_e = z_rcv[0] + e;
+                    else if (x_e < 0) {
+                        x_e = 0;
+                        logger(log_pn_error, "0100"); // write a log message
+                    }
 
-                            logger(log_pn_error, "0110"); // write a log message
+                    x_snd[0] = x_e;
+                    if(write(x_e_out, x_snd, sizeof(x_snd)) != 1) { // writing the corrected position on the pipe
+                        perror("error tring to write on the x_c pipe from error proces"); // checking errors
+                        logger(log_pn_error, "e0101"); // write a error log message
+                    }
+                    else {
+                        logger(log_pn_error, "0101"); // write a log message
+                    }
+                }
+            }
 
-                            if (z_e >100) {
-                                z_e = 100;
-                                logger(log_pn_error, "0111"); // write a log message
-                            }
-                            else if (z_e < 0) {
-                                z_e = 0;
-                                logger(log_pn_error, "1000"); // write a log message
-                            }
-                            z_snd[0] = z_e;
-                            if(write(z_e_out, z_snd, sizeof(z_snd)) != 1) { // writing the corrected position on the pipe
-                                perror("error tring to write on the z_c pipe from error proces"); // checking errors
-                            }
-                            logger(log_pn_error, "1001"); // write a log message
-                        }
+            else if (FD_ISSET(z_e_in, &rfds) > 0) { // the pipe z_e_in is ready for communicate
+                if(read(z_e_in, z_rcv, sizeof(z_rcv)) < 0) { // checking errors
+                    perror("error reading the pipe z from error proces");
+                    logger(log_pn_error, "e0010"); // write a error log message 
+                }
+                else if (read(z_e_in, z_rcv, sizeof(z_rcv)) > 0) { // otherwise read the position z and add the correction of the error
+                    e = ((rand() % (rnum_u_z + 1))-(rnum_u_z/2)) / 10;
+                    z_e = z_rcv[0] + e;
+
+                    logger(log_pn_error, "0110"); // write a log message
+
+                    if (z_e >100) {
+                        z_e = 100;
+                        logger(log_pn_error, "0111"); // write a log message
+                    }
+                    else if (z_e < 0) {
+                        z_e = 0;
+                        logger(log_pn_error, "1000"); // write a log message
+                    }
+                    z_snd[0] = z_e;
+                    if(write(z_e_out, z_snd, sizeof(z_snd)) != 1) { // writing the corrected position on the pipe
+                        perror("error tring to write on the z_c pipe from error proces"); // checking errors
+                        logger(log_pn_error, "e1001"); // write a error log message
+                    }
+                    else {
+                        logger(log_pn_error, "1001"); // write a log message
                     }
                 }
             }

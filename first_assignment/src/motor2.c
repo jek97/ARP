@@ -30,24 +30,28 @@ void sig_handler (int signo) {
     }
 }
 
-void logger(char * log_pathname, char log_msg[]) {
+int logger(char * log_pathname, char log_msg[]) {
   double c = (double) (clock() / CLOCKS_PER_SEC);
   char log_msg_arr[strlen(log_msg)+11];
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
     perror("error in logger sprintf");
+    return -1;
   }
   int log_fd; // declare the log file descriptor
   if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
     perror(("error opening the log file %s", log_pathname)); // checking errors
+    return -1;
   }
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
+      return -1;
   }
+  return 1;
 }
 
 int main(int argc, char const *argv[]) {
     char * log_pn_motor2 = "./bin/log_files/motor2.txt"; // initialize the log file path name
-    logger(log_pn_motor2, "log legend: /n 0001=opened the pipes  0010= no message received  0011 = decrease velocity /n 0100= velocity=0  0101= increase velocity  0110= reached upper bound /n 0111= reached lower bound  1000= writed the position on the pipe");
+    logger(log_pn_motor2, "log legend:  0001=opened the pipes  0010= no message received  0011 = decrease velocity  0100= velocity=0  0101= increase velocity  0110= reached upper bound  0111= reached lower bound  1000= writed the position on the pipe.    the log number with an e in front means the relative operation failed");
 
     // condition for the signal:
     if (signal(SIGUSR1, sig_handler) == SIG_ERR) {
