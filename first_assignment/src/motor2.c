@@ -116,7 +116,7 @@ int main(int argc, char const *argv[]) {
                 logger(log_pn_motor2, "0101"); // write a log message
             }
         }
-        logger(log_pn_motor2, "c"); // write a error log message
+        
         // constrol if z reached the upper bound:
         if (z_i > 100) { // reached upper bound stop at that position
             z_i = 100;
