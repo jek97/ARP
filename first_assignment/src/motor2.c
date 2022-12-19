@@ -70,7 +70,7 @@ int main(int argc, char const *argv[]) {
     }
     
     // open the pipes:
-    Vz_m2 = open(Vz, O_RDONLY); // open the pipe Vz to read on it
+    Vz_m2 = open(Vz, O_RDONLY | O_NONBLOCK); // open the pipe Vz to read on it
     if(Vz_m2 < 0){
         perror("error opening the pipe Vz from m2"); // checking errors
     }
@@ -86,7 +86,6 @@ int main(int argc, char const *argv[]) {
     else {
         logger(log_pn_motor2, "e0001"); // write a errorlog message
     }
-
     while(1){
 
         // read the pipe and compute the position along x
@@ -117,7 +116,7 @@ int main(int argc, char const *argv[]) {
                 logger(log_pn_motor2, "0101"); // write a log message
             }
         }
-        
+        logger(log_pn_motor2, "c"); // write a error log message
         // constrol if z reached the upper bound:
         if (z_i > 100) { // reached upper bound stop at that position
             z_i = 100;
@@ -130,10 +129,8 @@ int main(int argc, char const *argv[]) {
             Vz_i = 0;
             logger(log_pn_motor2, "0111"); // write a log message
         }
-        
         // wait to simulate the speed:
         sleep(T);
-
         // write the position in the bufer and then on the pipe:
         z_snd[0] = z_i; // putting the position z_i in the buffer to send it
 

@@ -66,12 +66,12 @@ int main(int argc, char const *argv[]) {
 
     // open the pipes:
     // input pipes
-    x_e_in = open(x, O_RDONLY); // open the pipe x to read on it
+    x_e_in = open(x, O_RDONLY | O_NONBLOCK); // open the pipe x to read on it
     if(x_e_in < 0){
         perror("error opening the pipe x from error"); // checking errors
     }
 
-    z_e_in = open(z, O_RDONLY); // open the pipe z to read on it
+    z_e_in = open(z, O_RDONLY | O_NONBLOCK); // open the pipe z to read on it
     if(z_e_in < 0){
         perror("error opening the pipe z from error"); // checking errors
     }

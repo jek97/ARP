@@ -70,7 +70,7 @@ int main(int argc, char const *argv[]) {
     }
     
     // open the pipes:
-    Vx_m1 = open(Vx, O_RDONLY); // open the pipe Vx to read on it
+    Vx_m1 = open(Vx, O_RDONLY | O_NONBLOCK); // open the pipe Vx to read on it
     if(Vx_m1 < 0){
         perror("error opening the pipe Vx from m1"); // checking errors
     }
@@ -87,7 +87,7 @@ int main(int argc, char const *argv[]) {
         logger(log_pn_motor1, "e0001"); // write a errorlog message
     }
 
-    while(1){
+    while(1) {
 
         // read the pipe and compute the position along x
         if(read(Vx_m1, Vx_rcv, sizeof(Vx_rcv)) < 0) {

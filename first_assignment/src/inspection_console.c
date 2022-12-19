@@ -58,12 +58,12 @@ int main(int argc, char const *argv[]){
 
     // open the pipes:
     // input pipes:
-    x_ins_in = open(x_c, O_RDONLY); // open the pipe x_c to read on it
+    x_ins_in = open(x_c, O_RDONLY | O_NONBLOCK); // open the pipe x_c to read on it
     if(x_ins_in < 0){
         perror("error opening the pipe x_c from inspection"); // checking errors
     }
 
-    z_ins_in = open(z_c, O_RDONLY); // open the pipe z_c to read on it
+    z_ins_in = open(z_c, O_RDONLY | O_NONBLOCK); // open the pipe z_c to read on it
     if(z_ins_in < 0){
         perror("error opening the pipe z_c from inspection"); // checking errors
     }
