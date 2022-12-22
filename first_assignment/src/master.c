@@ -10,7 +10,9 @@
 #include <string.h>
 
 int mkpipe(const char *pathname, mode_t mode) { // function to create a named pipe
-  int pipe; // declare the returned valeu of the funtion
+  int pipe; // declare the returned valeu of the mkfifo funtion
+  int rm_pipe; // declare the returned valeu of the removing function
+  remove(pathname); // remove any previous pipe with the same name
   pipe = mkfifo(pathname,mode); // actually create the pipe
   if(pipe < 0) { // checking possible errors
     perror("error while creating the named pipe");
@@ -42,21 +44,25 @@ int spawn(const char * program, char * arg_list[]) {
 }
 
 int logger(char * log_pathname, char log_msg[]) {
-  double c = (double) (clock() / CLOCKS_PER_SEC);
-  char log_msg_arr[strlen(log_msg)+11];
-  if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
-    perror("error in logger sprintf");
+  int log_fd; // declare the log file descriptor
+  char log_msg_arr[strlen(log_msg)+11]; // declare the message string
+  double c = (double) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
+  char * log_msg_arr_p = &log_msg_arr[0]; // initialize the pointer to the log_msg_arr array
+  if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){ // fulfill the array with the message
+    perror("error in logger sprintf"); // checking errors
     return -1;
   }
-  int log_fd; // declare the log file descriptor
+
   if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
     perror(("error opening the log file %s", log_pathname)); // checking errors
     return -1;
   }
+
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
       return -1;
   }
+
   close(log_fd);
   return 1;
 }
@@ -70,8 +76,8 @@ int main() {
   char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
   char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
 
-  remove(log_pn_master);
-  logger(log_pn_master, "log legend: 0001= opened the pipes  0010= spawned the processes 0011= opened the signal pipe  0100= stop signal sended  0101= reset signal sended  0111= watchdogs has killed all the processes  1000= pipe s readed.    the log number with an e in front means the relative operation failed");
+  remove(log_pn_master); // remove the previous log file
+  logger(log_pn_master, "log legend: 0001= opened the pipes  0010= spawned the processes 0011= opened the signal pipe  0100= stop signal sended  0101= reset signal sended  0111= watchdogs has killed all the processes  1000= pipe s readed  1001= removed the previous Vx pipe  1010= removed the previous Vz pipe  1011= removed the previous x pipe  1100= removed the previous z pipe  1101= removed the previous x_c pipe 1110= removed the previous z_c pipe  1111= removed the previous s pipe.    the log number with an e in front means the relative operation failed");
   
   // declering the mkpipe() arguments:
   // % from cmd to m1, m2:
@@ -108,15 +114,21 @@ int main() {
 
   int fd_s; // declare the file descriptor for the pipe s
   int s_rcv[1]; // declare the array where i will store the signal id
+  int * s_rcv_p = &s_rcv[0]; // initialize the pointer to the s_rcv array
+
+  // declaring the spawn() arguments:
+  char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
+  char * arg_list_m1[] = { "./bin/motor1", "-e", "./bin/motor1", NULL };
+  char * arg_list_m2[] = { "./bin/motor2", "-e", "./bin/motor2", NULL };
+  char * arg_list_err[] = { "./bin/error", "-e", "./bin/error", NULL };
+  char * arg_list_insp[] = { "/usr/bin/konsole", "-e", "./bin/inspection", NULL };
+
+  // declaring some internal variables:
+  int r_fd_s; // declare the returned valeu of the read function on the signal pipe
+  int k_stop; // declaring the returned valeu of the kill function that stops the motors
+  int k_rst; // declaring the returned valeu of the kill function that reset the simulation
   
   // opening the named pipes:
-  remove(cmd_Vx_m1);
-  remove(cmd_Vz_m2);
-  remove(m1_x_err);
-  remove(m2_z_err);
-  remove(err_x_c_ins);
-  remove(err_z_c_ins);
-  remove(ins_s_mass);
   cmd_Vx_m1_r = mkpipe(cmd_Vx_m1, cmd_Vx_m1_mode); // creating the named pipe for communicate the speed along x between the cmd and the motor1 
   cmd_Vz_m2_r = mkpipe(cmd_Vz_m2, cmd_Vz_m2_mode); // creating the named pipe for communicate the speed along z between the cmd and the motor2
 
@@ -134,14 +146,8 @@ int main() {
   else {
     logger(log_pn_master, "e0001"); // write a error log message
   }
- 
-  // declaring the spawn() arguments:
-  char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
-  char * arg_list_m1[] = { "./bin/motor1", "-e", "./bin/motor1", NULL };
-  char * arg_list_m2[] = { "./bin/motor2", "-e", "./bin/motor2", NULL };
-  char * arg_list_err[] = { "./bin/error", "-e", "./bin/error", NULL };
-  char * arg_list_insp[] = { "/usr/bin/konsole", "-e", "./bin/inspection", NULL };
-
+  
+  // spawn the processes:
   pid_t pid_cmd = spawn("/usr/bin/konsole", arg_list_command);
   pid_t pid_m1 = spawn("./bin/motor1", arg_list_m1);
   pid_t pid_m2 = spawn("./bin/motor2", arg_list_m2);
@@ -157,43 +163,47 @@ int main() {
 
   // opening the signal pipe
   fd_s = open(ins_s_mass, O_RDONLY | O_NONBLOCK); // open the pipe s to read on it
-    if( ins_s_mass < 0){
-        perror("error opening the pipe s from master"); // checking errors
-        logger(log_pn_master, "e0011"); // write a error log message
-    }
-    else {
-      logger(log_pn_master, "0011"); // write a log message
-    }
+  if( fd_s < 0){
+      perror("error opening the pipe s from master"); // checking errors
+      logger(log_pn_master, "e0011"); // write a error log message
+  }
+  else {
+    logger(log_pn_master, "0011"); // write a log message
+  }
 
   while(1) {
+    sleep(1);
     // menaging the inspect signals:
     // read from the pipe and send the sgnals:
-    if(read(fd_s, s_rcv, sizeof(s_rcv)) < 0) { // checking errors
-      //perror("error reading the pipe s from master");
+    r_fd_s = read(fd_s, s_rcv_p, 1);
+    if(r_fd_s < 0) { 
+      perror("error reading the pipe s from master"); // checking errors
       logger(log_pn_master, "e1000"); // write a error log message
     }
-    else if (read(fd_s, s_rcv, sizeof(s_rcv)) > 0){ // otherwise read the signal id
+    else if (r_fd_s > 0){ // otherwise read the signal id
       logger(log_pn_master, "1000"); // write a error log message
       if (s_rcv[0] = 0) { // the inspect is asking to do the stop operation
-        if (kill((pid_cmd, pid_m1, pid_m2), SIGUSR1) < 0) {
-          perror("error while sending the signal to the cmd, m1, m2 from master");
+        k_stop = kill((pid_cmd, pid_m1, pid_m2), SIGUSR1); // send the signals
+        if ( k_stop < 0) {
+          perror("error while sending the signal to the cmd, m1, m2 from master"); // checking errors
           logger(log_pn_master, "e0100"); // write a error log message
         }
-        else {
+        else if (k_stop == 0){
           logger(log_pn_master, "0100"); // write a log message
         }
       }
       else if (s_rcv[0] = 1) { // the inspect is asking to do the reset operation
-        if (kill((pid_cmd, pid_m1, pid_m2), SIGUSR2) < 0) {
-          perror("error while sending the signal to the cmd, m1, m2 from master");
+        k_rst = kill((pid_cmd, pid_m1, pid_m2), SIGUSR2); // send the signals
+        if (k_rst < 0) {
+          perror("error while sending the signal to the cmd, m1, m2 from master"); // checking errors
           logger(log_pn_master, "e0101"); // write a error log message
         }
-        else {
+        else if (k_rst == 0){
           logger(log_pn_master, "0101"); // write a log message
         }
-
       }
     }
+    
     // Watchdogs:
     struct stat command_info; // declare the struct where i will store the command log file information
     struct stat motor1_info; // declare the struct where i will store the motor1 log file information
@@ -203,24 +213,25 @@ int main() {
     time_t t; // declare the current time
 
     if(stat(log_pn_command, &command_info) < 0) { // save the log file information of the command in the struct
-      perror("error while reading the command log file informations"); // check errors
+      perror("error while reading the command log file informations"); // checking errors
     }
     if(stat(log_pn_motor1, &motor1_info) < 0) { // save the log file information of the motor1 in the struct
-      perror("error while reading the motor1 log file informations"); // check errors
+      perror("error while reading the motor1 log file informations"); // checking errors
     }
     if(stat(log_pn_motor2, &motor2_info) < 0) { // save the log file information of the motor2 in the struct
-      perror("error while reading the motor2 log file informations"); // check errors
+      perror("error while reading the motor2 log file informations"); // checking errors
     }
     if(stat(log_pn_error, &error_info) < 0) { // save the log file information of the error in the struct
-      perror("error while reading the error log file informations"); // check errors
+      perror("error while reading the error log file informations"); // checking errors
     }
     if(stat(log_pn_inspect, &inspect_info) < 0) { // save the log file information of the inspection in the struct
-      perror("error while reading the inspect log file informations"); // check errors
+      perror("error while reading the inspect log file informations"); // checking errors
     }
+    
     t = time(NULL); // obtain the actual time
     /*if ((difftime(t, command_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor1_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor2_info.st_mtim.tv_sec) >= 60) | (difftime(t, error_info.st_mtim.tv_sec) >= 60) | (difftime(t, inspect_info.st_mtim.tv_sec) >= 60)) { // checking if one process is not active for 60 seconds
       if (kill((pid_cmd, pid_m1, pid_m2, pid_err, pid_insp), SIGKILL) < 0) { // kill all the processes
-        perror("error while closing all the proces form the watchdogs"); // check errors
+        perror("error while closing all the proces form the watchdogs"); // checking errors
         logger(log_pn_master, "e0111"); // write a error log message
       }
       else {
@@ -229,22 +240,16 @@ int main() {
       }
     }*/
   }
-
+  
   // closure
   int status[5]; // array where i will put the exit status of all the processes
   int *status_p = status; // pointer to the previous arrray
   waitpid(pid_cmd, status_p, 0); // wait for the proces to be closed and return the status
-  remove(cmd_Vx_m1); // close the pipes
-  remove(cmd_Vz_m2); // close the pipes
   waitpid(pid_m1, status_p+1, 0); // wait for the proces to be closed and return the status
-  remove(m1_x_err); // close the pipes
   waitpid(pid_m2, status_p+2, 0); // wait for the proces to be closed and return the status
-  remove(m2_z_err); // close the pipes
   waitpid(pid_err, status_p+3, 0); // wait for the proces to be closed and return the status
-  remove(err_x_c_ins); // close the pipes
-  remove(err_z_c_ins); // close the pipes
   waitpid(pid_insp, status_p+4, 0); // wait for the proces to be closed and return the status
-  remove(ins_s_mass); // close the pipes
+
   printf ("the following process exited with the following errors: /n command console %d\n motor1 %d\n motor2 %d\n error %d\n inspection console %d\n", status[0], status[1], status[2], status[3], status[4]); // print why the processes where closed
   return 0;
 }

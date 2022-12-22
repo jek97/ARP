@@ -10,21 +10,25 @@
 #include <string.h>
 
 int logger(char * log_pathname, char log_msg[]) {
-  double c = (double) (clock() / CLOCKS_PER_SEC);
-  char log_msg_arr[strlen(log_msg)+11];
-  if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
-    perror("error in logger sprintf");
+  int log_fd; // declare the log file descriptor
+  char log_msg_arr[strlen(log_msg)+11]; // declare the message string
+  double c = (double) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
+  char * log_msg_arr_p = &log_msg_arr[0]; // initialize the pointer to the log_msg_arr array
+  if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){ // fulfill the array with the message
+    perror("error in logger sprintf"); // checking errors
     return -1;
   }
-  int log_fd; // declare the log file descriptor
+
   if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
     perror(("error opening the log file %s", log_pathname)); // checking errors
     return -1;
   }
+
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
       return -1;
   }
+  
   close(log_fd);
   return 1;
 }
@@ -42,10 +46,14 @@ int main(int argc, char const *argv[]) {
     char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe x_c pathname
 
     int x_rcv[1]; // declare the x position receiving buffer
+    int * x_rcv_p = &x_rcv[0]; // initialize the pointer to the x_rcv array
     int z_rcv[1]; // declare the z position receiving buffer
+    int * z_rcv_p = &z_rcv[0]; // initialize the pointer to the z_rcv array
 
     int x_snd[1]; // declare the x corrected position sending buffer
+    int * x_snd_p = &x_snd[0]; // initialize the pointer to the x_snd array
     int z_snd[1]; // declare the z corrected position sending buffer
+    int * z_snd_p = &z_snd[0]; // initialize the pointer to the z_snd array
 
     fd_set rfds; // declare the select mode
     struct timeval tv; // declare the time interval of the select function
@@ -60,18 +68,25 @@ int main(int argc, char const *argv[]) {
     float x_e; // declare the internal computed and used x
     float z_e; // declare the internal computed and used z
 
+    int sel_err; // declaring the returned valeu of the function select
+    int r_x_e_in; // declaring the returned valeu of the read function on the pipe x
+    int r_z_e_in; // declaring the returned valeu of the read function on the pipe z
+
+    int w_x_e_out; // declaring the returned valeu of the write function on the pipe x_c
+    int w_z_e_out; // declaring the returned valeu of the write function on the pipe z_c
+
     char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
-    remove(log_pn_error);
+    remove(log_pn_error); // remove the previous log file
     logger(log_pn_error, "log legend:  0001=opened the pipes  0010= x received and error computed  0011 = x exceed upper bound  0100= x exceed lower bound  0101= x sended to inspect  0110= z received and error computed  0111= z exceed upper bound  1000= z exceed the lower bound  1001= z sended to the inspect  1010= selet sucseed  1011= select timer elapsed before receiving data.    the log number with an e in front means the relative operation failed");
 
     // open the pipes:
     // input pipes
-    x_e_in = open(x, O_RDONLY | O_NONBLOCK); // open the pipe x to read on it
+    x_e_in = open(x, O_RDONLY); // open the pipe x to read on it
     if(x_e_in < 0){
         perror("error opening the pipe x from error"); // checking errors
     }
 
-    z_e_in = open(z, O_RDONLY | O_NONBLOCK); // open the pipe z to read on it
+    z_e_in = open(z, O_RDONLY); // open the pipe z to read on it
     if(z_e_in < 0){
         perror("error opening the pipe z from error"); // checking errors
     }
@@ -94,8 +109,8 @@ int main(int argc, char const *argv[]) {
         logger(log_pn_error, "e0001"); // write a error log message
     }
 
-    // computing
     while(1){
+        
         // setting up the select
         FD_ZERO(&rfds); // clear all the fd in the set
         FD_SET(x_e_in, &rfds); // put the fd of x_e_in in the set
@@ -107,22 +122,24 @@ int main(int argc, char const *argv[]) {
         rnum_u_x = (int)(x_rcv[0] * 2); // seting the upper bound for the x error
         rnum_u_z = (int)(z_rcv[0] * 2); // setting the upper bound for the z error
 
-        if (select((nfds+1), &rfds, NULL, NULL, &tv) < 0) { // checking errors
-            perror("error in the select of error proces");
+        sel_err = select((nfds+1), &rfds, NULL, NULL, &tv); // checking if there is any pipe avaiable for the reading
+        if (sel_err < 0) { 
+            perror("error in the select of error proces"); // checking errors
             logger(log_pn_error, "e1010"); // write a error log message
         }
-        else if (select((nfds+1), &rfds, NULL, NULL, &tv) == 0){
+        else if (sel_err == 0){
+            //perror("timer elapsed in error proces input select without data"); // checking errors
             logger(log_pn_error, "1011"); // write a log message
-            perror("timer elapsed in error proces input select without data");
         }
-        else if (select((nfds+1), &rfds, NULL, NULL, &tv) > 0){
+        else if (sel_err > 0){
             logger(log_pn_error, "1010"); // write a log message
             if (FD_ISSET(x_e_in, &rfds) > 0) { // the pipe x_e_in is ready for communicate
-                if(read(x_e_in, x_rcv, sizeof(x_rcv)) < 0) { // checking errors
-                    perror("error reading the pipe x from error proces");
+                r_x_e_in = read(x_e_in, x_rcv_p, 1); // reading the pipe
+                if(r_x_e_in <= 0) { 
+                    perror("error reading the pipe x from error proces"); // checking errors
                     logger(log_pn_error, "e0010"); // write a error log message
                 }
-                else if (read(x_e_in, x_rcv, sizeof(x_rcv)) > 0) { // otherwise read the position x and add the correction of the error
+                else if (r_x_e_in > 0) { // otherwise read the position x and add the correction of the error
                     e = ((rand() % (rnum_u_x + 1))-(rnum_u_x/2)) / 10;
                     x_e = x_rcv[0] + e;
 
@@ -138,22 +155,24 @@ int main(int argc, char const *argv[]) {
                     }
 
                     x_snd[0] = x_e;
-                    if(write(x_e_out, x_snd, sizeof(x_snd)) != 1) { // writing the corrected position on the pipe
+                    w_x_e_out = write(x_e_out, x_snd_p, 1); // writing the corrected position on the pipe
+                    if(w_x_e_out <= 0) { 
                         perror("error tring to write on the x_c pipe from error proces"); // checking errors
                         logger(log_pn_error, "e0101"); // write a error log message
                     }
-                    else {
+                    else if (w_x_e_out > 0) {
                         logger(log_pn_error, "0101"); // write a log message
                     }
                 }
             }
 
             else if (FD_ISSET(z_e_in, &rfds) > 0) { // the pipe z_e_in is ready for communicate
-                if(read(z_e_in, z_rcv, sizeof(z_rcv)) < 0) { // checking errors
-                    perror("error reading the pipe z from error proces");
+                r_z_e_in = read(z_e_in, z_rcv_p, sizeof(z_rcv)); // reading the pipe
+                if(r_z_e_in <= 0) { 
+                    perror("error reading the pipe z from error proces"); // checking errors
                     logger(log_pn_error, "e0010"); // write a error log message 
                 }
-                else if (read(z_e_in, z_rcv, sizeof(z_rcv)) > 0) { // otherwise read the position z and add the correction of the error
+                else if (r_z_e_in > 0) { // otherwise read the position z and add the correction of the error
                     e = ((rand() % (rnum_u_z + 1))-(rnum_u_z/2)) / 10;
                     z_e = z_rcv[0] + e;
 
@@ -168,11 +187,12 @@ int main(int argc, char const *argv[]) {
                         logger(log_pn_error, "1000"); // write a log message
                     }
                     z_snd[0] = z_e;
-                    if(write(z_e_out, z_snd, sizeof(z_snd)) != 1) { // writing the corrected position on the pipe
+                    w_z_e_out = write(z_e_out, z_snd_p, 1); // writing the corrected position on the pipe
+                    if(w_z_e_out <= 0) { 
                         perror("error tring to write on the z_c pipe from error proces"); // checking errors
                         logger(log_pn_error, "e1001"); // write a error log message
                     }
-                    else {
+                    else if (w_z_e_out > 0){
                         logger(log_pn_error, "1001"); // write a log message
                     }
                 }

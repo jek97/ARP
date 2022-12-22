@@ -24,26 +24,31 @@ void sig_handler (int signo) {
 }
 
 int logger(char * log_pathname, char log_msg[]) {
-  double c = (double) (clock() / CLOCKS_PER_SEC);
-  char log_msg_arr[strlen(log_msg)+11];
-  if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){
-    perror("error in logger sprintf");
+  int log_fd; // declare the log file descriptor
+  char log_msg_arr[strlen(log_msg)+11]; // declare the message string
+  double c = (double) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
+  char * log_msg_arr_p = &log_msg_arr[0]; // initialize the pointer to the log_msg_arr array
+  if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){ // fulfill the array with the message
+    perror("error in logger sprintf"); // checking errors
     return -1;
   }
-  int log_fd; // declare the log file descriptor
+
   if ((log_fd = open(log_pathname,  O_CREAT | O_APPEND | O_WRONLY, 0644)) < 0){ // open the log file to write on it
     perror(("error opening the log file %s", log_pathname)); // checking errors
     return -1;
   }
+
   if(write(log_fd, log_msg_arr, sizeof(log_msg_arr)) != sizeof(log_msg_arr)) { // writing the log message on the log file
       perror("error tring to write the log message in the log file"); // checking errors
       return -1;
   }
+  
   close(log_fd);
   return 1;
 }
 
 int main(int argc, char const *argv[]) {
+    sleep(1);
 
     int Vz_m2; // inizialize the file descriptor of the pipe Vz
     int z_m2; // inizialize the file descriptor of the pipe z
@@ -51,21 +56,26 @@ int main(int argc, char const *argv[]) {
     char *Vz = "./bin/named_pipes/Vz";// initialize the pipe Vz pathname
     char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
     int Vz_rcv[1]; // initialize the buffer where i will store the received variable from the pipe Vz
+    int * Vz_rcv_p = &Vz_rcv[0]; // initialize the pointer to the Vz_rcv array
     int z_snd[1]; // initialize the buffer where i will send the position z
+    int * z_snd_p = &z_snd[0]; // initialize the pointer to the z_snd array
     int T = 1; // initialize the time period of the speed
 
+    int r_Vz_m2; // declaring the returned valeu of the read function on the pipe Vz
+    int w_z_m2; // declaring the returned valeu of the write function on the pipe z
+
     char * log_pn_motor2 = "./bin/log_files/motor2.txt"; // initialize the log file path name
-    remove(log_pn_motor2);
+    remove(log_pn_motor2); // remove the previous log file
     logger(log_pn_motor2, "log legend:  0001=opened the pipes  0010= no message received  0011 = decrease velocity  0100= velocity=0  0101= increase velocity  0110= reached upper bound  0111= reached lower bound  1000= writed the position on the pipe  1001=stop signal received  1010= reset signal received.    the log number with an e in front means the relative operation failed");
 
     // condition for the signal:
-    if (signal(SIGUSR1, sig_handler) == SIG_ERR) {
-        perror("error receiving the signal from command_console");
+    if (signal(SIGUSR1, sig_handler) == SIG_ERR) { // check if there is any stop signal
+        perror("error receiving the signal from command_console"); // checking errors
         logger(log_pn_motor2, "e1001"); // write a error log message
     }
 
-    if (signal(SIGUSR2, sig_handler) == SIG_ERR) {
-        perror("error receiving the signal from command_console");
+    if (signal(SIGUSR2, sig_handler) == SIG_ERR) { // check if there is any reset signal
+        perror("error receiving the signal from command_console"); // checking errors
         logger(log_pn_motor2, "e1010"); // write a error log message
     }
     
@@ -86,19 +96,18 @@ int main(int argc, char const *argv[]) {
     else {
         logger(log_pn_motor2, "e0001"); // write a errorlog message
     }
-    while(1){
 
-        // read the pipe and compute the position along x
-        if(read(Vz_m2, Vz_rcv, sizeof(Vz_rcv)) < 0) {
+    while(1){
+        
+        // read the pipe and compute the position along z
+        r_Vz_m2 = read(Vz_m2, Vz_rcv_p, 1); // reading the pipe Vz
+        if(r_Vz_m2 <= 0) {
             perror("error reading the pipe Vz from m2"); // checking errors
-            logger(log_pn_motor2, "e0010"); // write a error log message
+            z_i = z_i + (Vz_i * T);
+            logger(log_pn_motor2, "0010"); // write a error log message
             
         }
-        else if (read(Vz_m2, Vz_rcv, sizeof(Vz_rcv)) == 0) { // no message received
-            z_i = z_i + (Vz_i * T);
-            logger(log_pn_motor2, "0010"); // write a log message
-        }
-        else { 
+        else if (r_Vz_m2 > 0){ 
             if (Vz_rcv[0] == 0) { // decrease the velocity
                 Vz_i = Vz_i - 4;
                 z_i = z_i + (Vz_i * T);
@@ -134,11 +143,12 @@ int main(int argc, char const *argv[]) {
         // write the position in the bufer and then on the pipe:
         z_snd[0] = z_i; // putting the position z_i in the buffer to send it
 
-        if(write(z_m2, z_snd, sizeof(z_snd)) != sizeof(z_snd)) { // writing the position on the pipe
+        w_z_m2 = write(z_m2, z_snd_p, sizeof(z_snd)); // writing the position on the pipe
+        if(w_z_m2 <= 0) { 
             perror("error tring to write on the z pipe from m2"); // checking errors
             logger(log_pn_motor2, "e1000"); // write a error log message
         }
-        else {
+        else if (w_z_m2 > 0){
             logger(log_pn_motor2, "1000"); // write a log message
         }
     }
