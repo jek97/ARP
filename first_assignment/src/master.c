@@ -83,34 +83,34 @@ int main() {
   // % from cmd to m1, m2:
   int cmd_Vx_m1_r; // inizialize the returned valeu from mkpipe
   char *cmd_Vx_m1 = "./bin/named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
-  mode_t cmd_Vx_m1_mode = 0666; // mode of the pipe from cmd to m1 through Vx
+  mode_t cmd_Vx_m1_mode = 0777; // mode of the pipe from cmd to m1 through Vx
   
   int cmd_Vz_m2_r; // inizialize the returned valeu from mkpipe
   char *cmd_Vz_m2 = "./bin/named_pipes/Vz"; // pathname of the pipe from cmd to m2 through Vz
-  mode_t cmd_Vz_m2_mode = 0666; // mode of the pipe from cmd to m2 through Vz
+  mode_t cmd_Vz_m2_mode = 0777; // mode of the pipe from cmd to m2 through Vz
 
   // % from m1,m2 to error:
   int m1_x_err_r; // inizialize the returned valeu from mkpipe
   char *m1_x_err = "./bin/named_pipes/x"; // pathname of the pipe from m1 to error through x
-  mode_t m1_x_err_mode = 0666; // mode of the pipe from m1 to error through x
+  mode_t m1_x_err_mode = 0777; // mode of the pipe from m1 to error through x
 
   int m2_z_err_r; // inizialize the returned valeu from mkpipe
   char *m2_z_err = "./bin/named_pipes/z"; // pathname of the pipe from m2 to error through z
-  mode_t m2_z_err_mode = 0666; // mode of the pipe from m2 to error through z
+  mode_t m2_z_err_mode = 0777; // mode of the pipe from m2 to error through z
 
   // % form error to inspect:
   int err_x_c_ins_r; // inizialize the returned valeu from mkpipe
   char *err_x_c_ins = "./bin/named_pipes/x_c"; // pathname of the pipe from error to inspect through x_c
-  mode_t err_x_c_ins_mode = 0666; // mode of the pipe from error to inspect through x_c
+  mode_t err_x_c_ins_mode = 0777; // mode of the pipe from error to inspect through x_c
 
   int err_z_c_ins_r; // inizialize the returned valeu from mkpipe
   char *err_z_c_ins = "./bin/named_pipes/z_c"; // pathname of the pipe from error to inspect through z_c
-  mode_t err_z_c_ins_mode = 0666; // mode of the pipe from error to inspect through z_c
+  mode_t err_z_c_ins_mode = 0777; // mode of the pipe from error to inspect through z_c
 
   // % from inspect to master for the signals:
   int ins_s_mass_r; // inizialize the returned valeu from mkpipe
   char *ins_s_mass = "./bin/named_pipes/s"; // pathname of the pipe from inspect to master through s
-  mode_t ins_s_mass_mode = 0666; // mode of the pipe from inspect to master through s
+  mode_t ins_s_mass_mode = 0777; // mode of the pipe from inspect to master through s
 
   int fd_s; // declare the file descriptor for the pipe s
   int s_rcv[1]; // declare the array where i will store the signal id

@@ -81,12 +81,12 @@ int main(int argc, char const *argv[]) {
 
     // open the pipes:
     // input pipes
-    x_e_in = open(x, O_RDONLY); // open the pipe x to read on it
+    x_e_in = open(x, O_RDONLY | O_NONBLOCK); // open the pipe x to read on it
     if(x_e_in < 0){
         perror("error opening the pipe x from error"); // checking errors
     }
 
-    z_e_in = open(z, O_RDONLY); // open the pipe z to read on it
+    z_e_in = open(z, O_RDONLY | O_NONBLOCK); // open the pipe z to read on it
     if(z_e_in < 0){
         perror("error opening the pipe z from error"); // checking errors
     }
@@ -110,12 +110,11 @@ int main(int argc, char const *argv[]) {
     }
 
     while(1){
-        
         // setting up the select
         FD_ZERO(&rfds); // clear all the fd in the set
         FD_SET(x_e_in, &rfds); // put the fd of x_e_in in the set
         FD_SET(z_e_in, &rfds); // put the fd of z_e_in in the set
-        tv.tv_sec = 0; // set the time interval in seconds
+        tv.tv_sec = 1; // set the time interval in seconds
         tv.tv_usec = 50; // set the time interval in microseconds
 
         // setting up the random variables
@@ -128,14 +127,14 @@ int main(int argc, char const *argv[]) {
             logger(log_pn_error, "e1010"); // write a error log message
         }
         else if (sel_err == 0){
-            //perror("timer elapsed in error proces input select without data"); // checking errors
+            perror("timer elapsed in error proces input select without data"); // checking errors
             logger(log_pn_error, "1011"); // write a log message
         }
         else if (sel_err > 0){
             logger(log_pn_error, "1010"); // write a log message
             if (FD_ISSET(x_e_in, &rfds) > 0) { // the pipe x_e_in is ready for communicate
                 r_x_e_in = read(x_e_in, x_rcv_p, 1); // reading the pipe
-                if(r_x_e_in <= 0) { 
+                if(r_x_e_in < 0) { 
                     perror("error reading the pipe x from error proces"); // checking errors
                     logger(log_pn_error, "e0010"); // write a error log message
                 }
@@ -164,6 +163,7 @@ int main(int argc, char const *argv[]) {
                         logger(log_pn_error, "0101"); // write a log message
                     }
                 }
+                memset(x_rcv_p, 0, sizeof(x_rcv)); // clear the receiving messages array
             }
 
             else if (FD_ISSET(z_e_in, &rfds) > 0) { // the pipe z_e_in is ready for communicate
@@ -196,6 +196,7 @@ int main(int argc, char const *argv[]) {
                         logger(log_pn_error, "1001"); // write a log message
                     }
                 }
+                memset(z_rcv_p, 0, sizeof(z_rcv)); // clear the receiving messages array
             }
         }
     }

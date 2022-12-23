@@ -48,7 +48,6 @@ int logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]) {
-    sleep(1);
 
     int Vz_m2; // inizialize the file descriptor of the pipe Vz
     int z_m2; // inizialize the file descriptor of the pipe z
@@ -109,7 +108,7 @@ int main(int argc, char const *argv[]) {
         }
         else if (r_Vz_m2 > 0){ 
             if (Vz_rcv[0] == 0) { // decrease the velocity
-                Vz_i = Vz_i - 4;
+                Vz_i = Vz_i - 1;
                 z_i = z_i + (Vz_i * T);
                 logger(log_pn_motor2, "0011"); // write a log message
             }
@@ -120,7 +119,7 @@ int main(int argc, char const *argv[]) {
             }
 
             else if (Vz_rcv[0] == 2) { // increase the velocity
-                Vz_i = Vz_i + 4;
+                Vz_i = Vz_i + 1;
                 z_i = z_i + (Vz_i * T);
                 logger(log_pn_motor2, "0101"); // write a log message
             }
@@ -141,9 +140,7 @@ int main(int argc, char const *argv[]) {
         // wait to simulate the speed:
         sleep(T);
         // write the position in the bufer and then on the pipe:
-        z_snd[0] = z_i; // putting the position z_i in the buffer to send it
-
-        w_z_m2 = write(z_m2, z_snd_p, sizeof(z_snd)); // writing the position on the pipe
+        w_z_m2 = write(z_m2, z_snd_p, 1); // writing the position on the pipe
         if(w_z_m2 <= 0) { 
             perror("error tring to write on the z pipe from m2"); // checking errors
             logger(log_pn_motor2, "e1000"); // write a error log message
@@ -151,5 +148,6 @@ int main(int argc, char const *argv[]) {
         else if (w_z_m2 > 0){
             logger(log_pn_motor2, "1000"); // write a log message
         }
+        memset(Vz_rcv_p, 0, sizeof(Vz_rcv)); // clear the receiving messages array
     }
 }

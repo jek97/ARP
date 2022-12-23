@@ -9,7 +9,7 @@
 #include <string.h>
 
 int x_i = 0; // initialize position along x axis
-int Vx_i = 2; // initialize the velocity along x
+int Vx_i = 0; // initialize the velocity along x
 
 void sig_handler (int signo) {
     if (signo == SIGUSR1) { // stop signal received
@@ -48,7 +48,6 @@ int logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]) {
-    sleep(1);
 
     int Vx_m1; // inizialize the file descriptor of the pipe Vx
     int x_m1; // inizialize the file descriptor of the pipe x
@@ -80,7 +79,7 @@ int main(int argc, char const *argv[]) {
     }
     
     // open the pipes:
-    Vx_m1 = open(Vx, O_RDONLY); // open the pipe Vx to read on it
+    Vx_m1 = open(Vx, O_RDONLY | O_NONBLOCK); // open the pipe Vx to read on it
     if(Vx_m1 < 0){
         perror("error opening the pipe Vx from m1"); // checking errors
     }
@@ -124,13 +123,6 @@ int main(int argc, char const *argv[]) {
                 logger(log_pn_motor1, "0101"); // write a log message
             }
         }
-        
-        /*char k = Vx_m1;
-        char * k_p = &k;
-        char h[strlen(k_p)];
-        char * h_b = &h[0];
-        sprintf(h, "%c ", k);
-        logger(log_pn_motor1, h_b); // write a errorlog message*/
 
         // constrol if x reached the upper bound:
         if (x_i > 100) { // reached upper bound stop at that position
@@ -150,7 +142,6 @@ int main(int argc, char const *argv[]) {
 
         // write the position in the bufer and then on the pipe:
         x_snd[0] = x_i; // putting the position x_i in the buffer to send it
-
         w_x_m1 = write(x_m1, x_snd_p, 1); // writing the position on the pipe
         if(w_x_m1 <= 0) { 
             perror("error tring to write on the x pipe from m1"); // checking errors
@@ -159,5 +150,6 @@ int main(int argc, char const *argv[]) {
         else if (w_x_m1 > 0) {
             logger(log_pn_motor1, "1000"); // write a log message
         }
+        memset(Vx_rcv_p, 0, sizeof(Vx_rcv)); // clear the receiving messages array
     }
 }
