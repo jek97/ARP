@@ -161,7 +161,6 @@ int main(int argc, char const *argv[]) {
                         rnum_u_x = ((int)(x_e_i * 100)) + ((int)(x_e_i * 15)); // seting the upper bound for the x error
                         rnum_l_x = ((int)(x_e_i * 100)) - ((int)(x_e_i * 15)); // seting the lower bound for the x error
                         x_e = ((rand() % (rnum_u_x - rnum_l_x + 1)) + rnum_l_x) / 100.00; // compute the error
-
                     }
                     x_prev = x_e_i; // setting the valeu of x for the next iteration
                     x_e_prev = x_e; 
@@ -178,13 +177,6 @@ int main(int argc, char const *argv[]) {
                     }
 
                     x_snd[0] = x_e;
-
-                    float h = x_e_i;
-                    float * h_p = &h;
-                    char k[10];
-                    char * k_p = &k[0];
-                    sprintf(k, "%f", h);
-                    logger(log_pn_error, k_p); // write a log message
 
                     w_x_e_out = write(x_e_out, x_snd_p, 4); // writing the corrected position on the pipe
                     if(w_x_e_out <= 0) { 
@@ -232,13 +224,6 @@ int main(int argc, char const *argv[]) {
                     }
 
                     z_snd[0] = z_e;
-
-                    float h = z_e;
-                    float * h_p = &h;
-                    char k[10];
-                    char * k_p = &k[0];
-                    sprintf(k, "%f", h);
-                    logger(log_pn_error, k_p); // write a log message
 
                     w_z_e_out = write(z_e_out, z_snd_p, 4); // writing the corrected position on the pipe
                     if(w_z_e_out <= 0) { 

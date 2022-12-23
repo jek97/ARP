@@ -14,12 +14,12 @@ float Vz_i = 0; // initialize the velocity along z
 void sig_handler (int signo) {
     if (signo == SIGUSR1) { // stop signal received
         Vz_i = 0; // set the velocity to 0
-       
+        sleep(1);
     }
     else if (signo == SIGUSR2) { //reset signal received
         Vz_i = 0; // set the velocity to 0
         z_i = -0.1; // set the position z to 0, thanks to the error proces also
-        
+        sleep(1);
     }
 }
 

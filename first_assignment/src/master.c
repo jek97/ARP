@@ -116,6 +116,12 @@ int main() {
   int s_rcv[1]; // declare the array where i will store the signal id
   int * s_rcv_p = &s_rcv[0]; // initialize the pointer to the s_rcv array
 
+  int k_wd_1;
+  int k_wd_2;
+  int k_wd_3;
+  int k_wd_4;
+  int k_wd_5;
+
   // declaring the spawn() arguments:
   char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
   char * arg_list_m1[] = { "./bin/motor1", "-e", "./bin/motor1", NULL };
@@ -125,8 +131,10 @@ int main() {
 
   // declaring some internal variables:
   int r_fd_s; // declare the returned valeu of the read function on the signal pipe
-  int k_stop; // declaring the returned valeu of the kill function that stops the motors
-  int k_rst; // declaring the returned valeu of the kill function that reset the simulation
+  int k_stop_1; // declaring the returned valeu of the kill function that stops the motors
+  int k_stop_2; // declaring the returned valeu of the kill function that stops the motors
+  int k_rst_1; // declaring the returned valeu of the kill function that reset the simulation
+  int k_rst_2; // declaring the returned valeu of the kill function that reset the simulation
   
   // opening the named pipes:
   cmd_Vx_m1_r = mkpipe(cmd_Vx_m1, cmd_Vx_m1_mode); // creating the named pipe for communicate the speed along x between the cmd and the motor1 
@@ -182,24 +190,26 @@ int main() {
     }
     else if (r_fd_s > 0){ // otherwise read the signal id
       logger(log_pn_master, "1000"); // write a error log message
-      if (s_rcv[0] = 0) { // the inspect is asking to do the stop operation
-        k_stop = kill((pid_cmd, pid_m1, pid_m2), SIGUSR1); // send the signals
-        if ( k_stop < 0) {
+      if (s_rcv[0] == 0) { // the inspect is asking to do the stop operation
+        k_stop_1 = kill(pid_m1, SIGUSR1); // send the signals
+        k_stop_2 = kill(pid_m2, SIGUSR1); // send the signals
+        if (k_stop_1 == 0 && k_stop_2 == 0){
+          logger(log_pn_master, "0100"); // write a log message
+        }
+        else {
           perror("error while sending the signal to the cmd, m1, m2 from master"); // checking errors
           logger(log_pn_master, "e0100"); // write a error log message
         }
-        else if (k_stop == 0){
-          logger(log_pn_master, "0100"); // write a log message
-        }
       }
-      else if (s_rcv[0] = 1) { // the inspect is asking to do the reset operation
-        k_rst = kill((pid_cmd, pid_m1, pid_m2), SIGUSR2); // send the signals
-        if (k_rst < 0) {
+      else if (s_rcv[0] == 1) { // the inspect is asking to do the reset operation
+        k_rst_1 = kill(pid_m1, SIGUSR2); // send the signals
+        k_rst_2 = kill(pid_m2, SIGUSR2); // send the signals
+        if (k_rst_1 == 0 && k_rst_2 == 0){
+          logger(log_pn_master, "0101"); // write a log message
+        }
+        else {
           perror("error while sending the signal to the cmd, m1, m2 from master"); // checking errors
           logger(log_pn_master, "e0101"); // write a error log message
-        }
-        else if (k_rst == 0){
-          logger(log_pn_master, "0101"); // write a log message
         }
       }
     }
@@ -230,16 +240,23 @@ int main() {
     }
     
     t = time(NULL); // obtain the actual time
-    /*if ((difftime(t, command_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor1_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor2_info.st_mtim.tv_sec) >= 60) | (difftime(t, error_info.st_mtim.tv_sec) >= 60) | (difftime(t, inspect_info.st_mtim.tv_sec) >= 60)) { // checking if one process is not active for 60 seconds
-      if (kill((pid_cmd, pid_m1, pid_m2, pid_err, pid_insp), SIGKILL) < 0) { // kill all the processes
-        perror("error while closing all the proces form the watchdogs"); // checking errors
-        logger(log_pn_master, "e0111"); // write a error log message
-      }
-      else {
+    if ((difftime(t, command_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor1_info.st_mtim.tv_sec) >= 60) | (difftime(t, motor2_info.st_mtim.tv_sec) >= 60) | (difftime(t, error_info.st_mtim.tv_sec) >= 60) | (difftime(t, inspect_info.st_mtim.tv_sec) >= 60)) { // checking if one process is not active for 60 seconds
+      
+      k_wd_1 = kill(pid_cmd, SIGTERM); // kill the proces cmd
+      k_wd_2 = kill(pid_m1, SIGTERM); // kill the proces m1
+      k_wd_3 = kill(pid_m2, SIGTERM); // kill the proces m2
+      k_wd_4 = kill(pid_err, SIGTERM); // kill the proces err
+      k_wd_5 = kill(pid_insp, SIGTERM); // kill the proces insp
+
+      if (k_wd_1 == 0 && k_wd_2 == 0 && k_wd_3 == 0 && k_wd_4 == 0 && k_wd_5 == 0) {
         logger(log_pn_master, "0111"); // write a log message
         break; // exit the while loop
       }
-    }*/
+      else {
+        perror("error while closing all the proces form the watchdogs"); // checking errors
+        logger(log_pn_master, "e0111"); // write a error log message
+      }
+    }
   }
   
   // closure
@@ -251,6 +268,6 @@ int main() {
   waitpid(pid_err, status_p+3, 0); // wait for the proces to be closed and return the status
   waitpid(pid_insp, status_p+4, 0); // wait for the proces to be closed and return the status
 
-  printf ("the following process exited with the following errors: /n command console %d\n motor1 %d\n motor2 %d\n error %d\n inspection console %d\n", status[0], status[1], status[2], status[3], status[4]); // print why the processes where closed
+  printf ("the following process exited with the following errors: command console %d; motor1 %d; motor2 %d; error %d; inspection console %d;", status[0], status[1], status[2], status[3], status[4]); // print why the processes where closed
   return 0;
 }

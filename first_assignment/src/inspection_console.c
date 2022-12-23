@@ -45,7 +45,7 @@ int main(int argc, char const *argv[]){
     float * x_rcv_p = &x_rcv[0]; // initialize the pointer to the x_rcv array
     float z_rcv[4]; // declare the z position receiving buffer
     float * z_rcv_p = &z_rcv[0]; // initialize the pointer to the z_rcv array
-    int s_snd[1]; // declare the s signal sending buffer
+    int s_snd[] = {0, 1}; // declare the s signal sending buffer
     int * s_snd_p = &s_snd[0]; // initialize the pointer to the s_snd array
 
     fd_set rfds; // declare the select mode
@@ -178,7 +178,6 @@ int main(int argc, char const *argv[]){
                 if(check_button_pressed(stp_button, &event)) {
                     mvprintw(LINES - 1, 1, "STP button pressed");
                     refresh();
-                    s_snd[0] = 0; // setting the signal id to send
                     w_s_ins_out_1 = write(s_ins_out, s_snd_p, 1); // writing the signal id on the pipe
                     if(w_s_ins_out_1 <= 0) { 
                         perror("error tring to write on the s pipe from inspect"); // checking errors
@@ -195,8 +194,7 @@ int main(int argc, char const *argv[]){
                 else if(check_button_pressed(rst_button, &event)) {
                     mvprintw(LINES - 1, 1, "RST button pressed");
                     refresh();
-                    s_snd[0] = 1; // setting the signal id to send
-                    w_s_ins_out_2 = write(s_ins_out, s_snd_p, sizeof(s_snd)); // writing the signal id on the pipe
+                    w_s_ins_out_2 = write(s_ins_out, (s_snd_p + 1), 1); // writing the signal id on the pipe
                     if(w_s_ins_out_2 <= 0) { 
                         perror("error tring to write on the s pipe from inspect"); // checking errors
                         logger(log_pn_inspect, "e0101"); // write a error log message
