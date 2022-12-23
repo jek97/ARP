@@ -8,8 +8,8 @@
 #include <time.h>
 #include <string.h>
 
-int z_i = 0; // initialize position along z axis
-int Vz_i = 0; // initialize the velocity along z
+float z_i = 0; // initialize position along z axis
+float Vz_i = 0; // initialize the velocity along z
 
 void sig_handler (int signo) {
     if (signo == SIGUSR1) { // stop signal received
@@ -56,8 +56,8 @@ int main(int argc, char const *argv[]) {
     char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
     int Vz_rcv[1]; // initialize the buffer where i will store the received variable from the pipe Vz
     int * Vz_rcv_p = &Vz_rcv[0]; // initialize the pointer to the Vz_rcv array
-    int z_snd[1]; // initialize the buffer where i will send the position z
-    int * z_snd_p = &z_snd[0]; // initialize the pointer to the z_snd array
+    float z_snd[4]; // initialize the buffer where i will send the position z
+    float * z_snd_p = &z_snd[0]; // initialize the pointer to the z_snd array
     int T = 1; // initialize the time period of the speed
 
     int r_Vz_m2; // declaring the returned valeu of the read function on the pipe Vz
@@ -108,7 +108,7 @@ int main(int argc, char const *argv[]) {
         }
         else if (r_Vz_m2 > 0){ 
             if (Vz_rcv[0] == 0) { // decrease the velocity
-                Vz_i = Vz_i - 1;
+                Vz_i = Vz_i - 0.25;
                 z_i = z_i + (Vz_i * T);
                 logger(log_pn_motor2, "0011"); // write a log message
             }
@@ -119,15 +119,15 @@ int main(int argc, char const *argv[]) {
             }
 
             else if (Vz_rcv[0] == 2) { // increase the velocity
-                Vz_i = Vz_i + 1;
+                Vz_i = Vz_i + 0.25;
                 z_i = z_i + (Vz_i * T);
                 logger(log_pn_motor2, "0101"); // write a log message
             }
         }
         
         // constrol if z reached the upper bound:
-        if (z_i > 100) { // reached upper bound stop at that position
-            z_i = 100;
+        if (z_i > 10) { // reached upper bound stop at that position
+            z_i = 10;
             Vz_i = 0;
             logger(log_pn_motor2, "0110"); // write a log message
         }
@@ -140,7 +140,8 @@ int main(int argc, char const *argv[]) {
         // wait to simulate the speed:
         sleep(T);
         // write the position in the bufer and then on the pipe:
-        w_z_m2 = write(z_m2, z_snd_p, 1); // writing the position on the pipe
+        z_snd[0] = z_i;
+        w_z_m2 = write(z_m2, z_snd_p, 4); // writing the position on the pipe
         if(w_z_m2 <= 0) { 
             perror("error tring to write on the z pipe from m2"); // checking errors
             logger(log_pn_motor2, "e1000"); // write a error log message

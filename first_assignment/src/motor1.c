@@ -8,8 +8,8 @@
 #include <time.h>
 #include <string.h>
 
-int x_i = 0; // initialize position along x axis
-int Vx_i = 0; // initialize the velocity along x
+float x_i = 0; // initialize position along x axis
+float Vx_i = 0; // initialize the velocity along x
 
 void sig_handler (int signo) {
     if (signo == SIGUSR1) { // stop signal received
@@ -56,8 +56,8 @@ int main(int argc, char const *argv[]) {
     char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
     int Vx_rcv[1]; // initialize the buffer where i will store the received variable from the pipe Vx
     int * Vx_rcv_p = &Vx_rcv[0]; // initialize the pointer to the Vx_rcv array
-    int x_snd[1]; // initialize the buffer where i will send the position x
-    int * x_snd_p = &x_snd[0]; // initialize the pointer to the x_snd array
+    float x_snd[4]; // initialize the buffer where i will send the position x
+    float * x_snd_p = &x_snd[0]; // initialize the pointer to the x_snd array
     int T = 1; // initialize the time period of the speed
 
     int r_Vx_m1; // declaring the returned valeu of the read function on the pipe Vx
@@ -107,7 +107,7 @@ int main(int argc, char const *argv[]) {
 
         else if (r_Vx_m1 > 0) { 
             if ((Vx_rcv[0] == 0)) { // decrease the velocity
-                Vx_i = Vx_i - 4;
+                Vx_i = Vx_i - 1;
                 x_i = x_i + (Vx_i * T);
                 logger(log_pn_motor1, "0011"); // write a log message
             }
@@ -118,15 +118,15 @@ int main(int argc, char const *argv[]) {
             }
 
             else if ((Vx_rcv[0] == 2)) { // increase the velocity
-                Vx_i = Vx_i + 4;
+                Vx_i = Vx_i + 1;
                 x_i = x_i + (Vx_i * T);
                 logger(log_pn_motor1, "0101"); // write a log message
             }
         }
 
         // constrol if x reached the upper bound:
-        if (x_i > 100) { // reached upper bound stop at that position
-            x_i = 100;
+        if (x_i > 40) { // reached upper bound stop at that position
+            x_i = 40;
             Vx_i = 0;
             logger(log_pn_motor1, "0110"); // write a log message
         }
@@ -142,7 +142,7 @@ int main(int argc, char const *argv[]) {
 
         // write the position in the bufer and then on the pipe:
         x_snd[0] = x_i; // putting the position x_i in the buffer to send it
-        w_x_m1 = write(x_m1, x_snd_p, 1); // writing the position on the pipe
+        w_x_m1 = write(x_m1, x_snd_p, 4); // writing the position on the pipe
         if(w_x_m1 <= 0) { 
             perror("error tring to write on the x pipe from m1"); // checking errors
             logger(log_pn_motor1, "e1000"); // write a error log message

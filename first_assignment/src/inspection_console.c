@@ -41,10 +41,10 @@ int main(int argc, char const *argv[]){
     char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe z_c pathname
     char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
 
-    int x_rcv[1]; // declare the x position receiving buffer
-    int * x_rcv_p = &x_rcv[0]; // initialize the pointer to the x_rcv array
-    int z_rcv[1]; // declare the z position receiving buffer
-    int * z_rcv_p = &z_rcv[0]; // initialize the pointer to the z_rcv array
+    float x_rcv[4]; // declare the x position receiving buffer
+    float * x_rcv_p = &x_rcv[0]; // initialize the pointer to the x_rcv array
+    float z_rcv[4]; // declare the z position receiving buffer
+    float * z_rcv_p = &z_rcv[0]; // initialize the pointer to the z_rcv array
     int s_snd[1]; // declare the s signal sending buffer
     int * s_snd_p = &s_snd[0]; // initialize the pointer to the s_snd array
 
@@ -106,7 +106,10 @@ int main(int argc, char const *argv[]){
     }
 
     // Infinite loop
-    while(1)	{
+    while(1){
+        // clear the array where i will store the data
+        memset(x_rcv_p, 0, sizeof(x_rcv)); // clear the receiving messages array
+        memset(z_rcv_p, 0, sizeof(z_rcv)); // clear the receiving messages array
         
         // setting up the select
         FD_ZERO(&rfds); // clear all the fd in the set
@@ -126,7 +129,7 @@ int main(int argc, char const *argv[]){
         }
         else if (s_ins > 0) {
             if (FD_ISSET(x_ins_in, &rfds) > 0) { // the pipe x_ins_in is ready for communicate
-                r_x_ins_in = read(x_ins_in, x_rcv_p, 1); // reading the pipe
+                r_x_ins_in = read(x_ins_in, x_rcv_p, 4); // reading the pipe
                 if(r_x_ins_in <= 0) { 
                     perror("error reading the pipe x_c from inspect"); // checking errors
                     logger(log_pn_inspect, "e0010"); // write a error log message
@@ -136,11 +139,10 @@ int main(int argc, char const *argv[]){
 
                     logger(log_pn_inspect, "0010"); // write a log message
                 }
-                memset(x_rcv_p, 0, sizeof(x_rcv)); // clear the receiving messages array
             }
             
             else if (FD_ISSET(z_ins_in, &rfds) > 0) { // the pipe z_ins_in is ready for communicate
-                r_z_ins_in = read(z_ins_in, z_rcv_p, 1); // reading the pipe
+                r_z_ins_in = read(z_ins_in, z_rcv_p, 4); // reading the pipe
                 if(r_z_ins_in <= 0) {
                     perror("error reading the pipe z_c from inspect"); // checking errors
                     logger(log_pn_inspect, "e0011"); // write a error log message 
@@ -150,7 +152,6 @@ int main(int argc, char const *argv[]){
 
                     logger(log_pn_inspect, "0011"); // write a log message
                 }
-                memset(z_rcv_p, 0, sizeof(z_rcv)); // clear the receiving messages array
             }
 
         }
