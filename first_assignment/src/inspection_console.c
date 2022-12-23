@@ -51,7 +51,7 @@ int main(int argc, char const *argv[]){
     fd_set rfds; // declare the select mode
     struct timeval tv; // declare the time interval of the select function
     int retval; // declare the returned valeu
-    int nfds = 1; // initialize number of fd starting from 0
+    int nfds; // declaring the number of fd
     int fd; // declare the counter for FD_ISSET
 
     float x, z; // End-effector coordinates
@@ -74,14 +74,22 @@ int main(int argc, char const *argv[]){
 
     // open the pipes:
     // input pipes:
-    x_ins_in = open(x_c, O_RDONLY); // open the pipe x_c to read on it
+    x_ins_in = open(x_c, O_RDONLY | O_NONBLOCK); // open the pipe x_c to read on it
     if(x_ins_in < 0){
         perror("error opening the pipe x_c from inspection"); // checking errors
     }
 
-    z_ins_in = open(z_c, O_RDONLY); // open the pipe z_c to read on it
+    z_ins_in = open(z_c, O_RDONLY | O_NONBLOCK); // open the pipe z_c to read on it
     if(z_ins_in < 0){
         perror("error opening the pipe z_c from inspection"); // checking errors
+    }
+
+    // chose the right nfds based on the fd
+    if (x_ins_in > z_ins_in) {
+        nfds = x_ins_in + 1;
+    }
+    else {
+        nfds = z_ins_in + 1;
     }
 
     // output pipes:
@@ -128,6 +136,7 @@ int main(int argc, char const *argv[]){
 
                     logger(log_pn_inspect, "0010"); // write a log message
                 }
+                memset(x_rcv_p, 0, sizeof(x_rcv)); // clear the receiving messages array
             }
             
             else if (FD_ISSET(z_ins_in, &rfds) > 0) { // the pipe z_ins_in is ready for communicate
@@ -141,6 +150,7 @@ int main(int argc, char const *argv[]){
 
                     logger(log_pn_inspect, "0011"); // write a log message
                 }
+                memset(z_rcv_p, 0, sizeof(z_rcv)); // clear the receiving messages array
             }
 
         }

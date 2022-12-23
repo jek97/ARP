@@ -58,8 +58,7 @@ int main(int argc, char const *argv[]) {
     fd_set rfds; // declare the select mode
     struct timeval tv; // declare the time interval of the select function
     int retval; // declare the returned valeu
-    int nfds = 1; // initialize number of fd starting from 0
-    int fd; // declare the counter for FD_ISSET
+    int nfds; // declaring number of fd
 
     float e; // declare the random number
     int rnum_u_x; // declare the upper bound for the random number of x
@@ -91,6 +90,14 @@ int main(int argc, char const *argv[]) {
         perror("error opening the pipe z from error"); // checking errors
     }
 
+    // chose the right nfds based on the fd
+    if (x_e_in > z_e_in) {
+        nfds = x_e_in + 1;
+    }
+    else {
+        nfds = z_e_in + 1;
+    }
+    
     // output pipes
     x_e_out = open(x_c, O_WRONLY); // open the pipe x_c to write on it
     if(x_e_out < 0){
@@ -115,13 +122,13 @@ int main(int argc, char const *argv[]) {
         FD_SET(x_e_in, &rfds); // put the fd of x_e_in in the set
         FD_SET(z_e_in, &rfds); // put the fd of z_e_in in the set
         tv.tv_sec = 1; // set the time interval in seconds
-        tv.tv_usec = 50; // set the time interval in microseconds
+        tv.tv_usec = 0; // set the time interval in microseconds
 
         // setting up the random variables
         rnum_u_x = (int)(x_rcv[0] * 2); // seting the upper bound for the x error
         rnum_u_z = (int)(z_rcv[0] * 2); // setting the upper bound for the z error
 
-        sel_err = select((nfds+1), &rfds, NULL, NULL, &tv); // checking if there is any pipe avaiable for the reading
+        sel_err = select(nfds, &rfds, NULL, NULL, &tv); // checking if there is any pipe avaiable for the reading
         if (sel_err < 0) { 
             perror("error in the select of error proces"); // checking errors
             logger(log_pn_error, "e1010"); // write a error log message
@@ -134,7 +141,7 @@ int main(int argc, char const *argv[]) {
             logger(log_pn_error, "1010"); // write a log message
             if (FD_ISSET(x_e_in, &rfds) > 0) { // the pipe x_e_in is ready for communicate
                 r_x_e_in = read(x_e_in, x_rcv_p, 1); // reading the pipe
-                if(r_x_e_in < 0) { 
+                if(r_x_e_in < 0) {
                     perror("error reading the pipe x from error proces"); // checking errors
                     logger(log_pn_error, "e0010"); // write a error log message
                 }
@@ -199,5 +206,11 @@ int main(int argc, char const *argv[]) {
                 memset(z_rcv_p, 0, sizeof(z_rcv)); // clear the receiving messages array
             }
         }
+        int h = FD_ISSET(x_e_in, &rfds);
+        int * h_p = &h;
+        char k[10];
+        char * k_p = &k[0];
+        sprintf(k, "%i", h);
+        logger(log_pn_error, k_p); // write a log message
     }
 }

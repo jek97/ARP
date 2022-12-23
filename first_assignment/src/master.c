@@ -203,6 +203,7 @@ int main() {
         }
       }
     }
+    memset(s_rcv_p, 0, sizeof(s_rcv)); // clear the receiving messages array
     
     // Watchdogs:
     struct stat command_info; // declare the struct where i will store the command log file information
