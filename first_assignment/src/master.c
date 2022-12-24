@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <time.h>
 #include <string.h>
+#include <errno.h>
 
 int mkpipe(const char *pathname, mode_t mode) { // function to create a named pipe
   int pipe; // declare the returned valeu of the mkfifo funtion
@@ -46,7 +47,7 @@ int spawn(const char * program, char * arg_list[]) {
 int logger(char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
-  double c = (double) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
+  float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
   char * log_msg_arr_p = &log_msg_arr[0]; // initialize the pointer to the log_msg_arr array
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){ // fulfill the array with the message
     perror("error in logger sprintf"); // checking errors
@@ -68,6 +69,7 @@ int logger(char * log_pathname, char log_msg[]) {
 }
 
 int main() {
+  // declaring variables:
   //logger:
   char * log_pn_master = "./bin/log_files/master.txt"; // initialize the log file path name
   char * log_pn_command = "./bin/log_files/command.txt"; // initialize the log file path name
@@ -76,9 +78,6 @@ int main() {
   char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
   char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
 
-  remove(log_pn_master); // remove the previous log file
-  logger(log_pn_master, "log legend: 0001= opened the pipes  0010= spawned the processes 0011= opened the signal pipe  0100= stop signal sended  0101= reset signal sended  0111= watchdogs has killed all the processes  1000= pipe s readed  1001= removed the previous Vx pipe  1010= removed the previous Vz pipe  1011= removed the previous x pipe  1100= removed the previous z pipe  1101= removed the previous x_c pipe 1110= removed the previous z_c pipe  1111= removed the previous s pipe.    the log number with an e in front means the relative operation failed");
-  
   // declering the mkpipe() arguments:
   // % from cmd to m1, m2:
   int cmd_Vx_m1_r; // inizialize the returned valeu from mkpipe
@@ -112,16 +111,6 @@ int main() {
   char *ins_s_mass = "./bin/named_pipes/s"; // pathname of the pipe from inspect to master through s
   mode_t ins_s_mass_mode = 0777; // mode of the pipe from inspect to master through s
 
-  int fd_s; // declare the file descriptor for the pipe s
-  int s_rcv[1]; // declare the array where i will store the signal id
-  int * s_rcv_p = &s_rcv[0]; // initialize the pointer to the s_rcv array
-
-  int k_wd_1;
-  int k_wd_2;
-  int k_wd_3;
-  int k_wd_4;
-  int k_wd_5;
-
   // declaring the spawn() arguments:
   char * arg_list_command[] = { "/usr/bin/konsole", "-e", "./bin/command", NULL };
   char * arg_list_m1[] = { "./bin/motor1", "-e", "./bin/motor1", NULL };
@@ -129,12 +118,37 @@ int main() {
   char * arg_list_err[] = { "./bin/error", "-e", "./bin/error", NULL };
   char * arg_list_insp[] = { "/usr/bin/konsole", "-e", "./bin/inspection", NULL };
 
-  // declaring some internal variables:
+  // signal menagement for the inspection proces:
+  int fd_s; // declare the file descriptor for the pipe s
+  int s_rcv[1]; // declare the array where i will store the signal id
+  int * s_rcv_p = &s_rcv[0]; // initialize the pointer to the s_rcv array
   int r_fd_s; // declare the returned valeu of the read function on the signal pipe
   int k_stop_1; // declaring the returned valeu of the kill function that stops the motors
   int k_stop_2; // declaring the returned valeu of the kill function that stops the motors
   int k_rst_1; // declaring the returned valeu of the kill function that reset the simulation
   int k_rst_2; // declaring the returned valeu of the kill function that reset the simulation
+
+  // Watchdogs:
+  struct stat command_info; // declare the struct where i will store the command log file information
+  struct stat motor1_info; // declare the struct where i will store the motor1 log file information
+  struct stat motor2_info; // declare the struct where i will store the motor2 log file information
+  struct stat error_info; // declare the struct where i will store the error log file information
+  struct stat inspect_info; // declare the struct where i will store the inspect log file information
+  time_t t; // declare the current time
+
+  int k_wd_1; // declare the returned valeu of the function kill for the cmd
+  int k_wd_2; // declare the returned valeu of the function kill for the motor1
+  int k_wd_3; // declare the returned valeu of the function kill for the motor2
+  int k_wd_4; // declare the returned valeu of the function kill for the error proces
+  int k_wd_5; // declare the returned valeu of the function kill for the inspection
+
+  // closure
+  int status[5]; // array where i will put the exit status of all the processes
+  int *status_p = status; // pointer to the previous arrray
+  
+  // first log:
+  remove(log_pn_master); // remove the previous log file
+  logger(log_pn_master, "log legend: 0001= opened the pipes  0010= spawned the processes 0011= opened the signal pipe  0100= stop signal sended  0101= reset signal sended  0111= watchdogs has killed all the processes  1000= pipe s readed.    the log number with an e in front means the relative operation failed");
   
   // opening the named pipes:
   cmd_Vx_m1_r = mkpipe(cmd_Vx_m1, cmd_Vx_m1_mode); // creating the named pipe for communicate the speed along x between the cmd and the motor1 
@@ -182,9 +196,9 @@ int main() {
   while(1) {
     sleep(1);
     // menaging the inspect signals:
-    // read from the pipe and send the sgnals:
+    // read from the pipe and send the signals:
     r_fd_s = read(fd_s, s_rcv_p, 1);
-    if(r_fd_s < 0) { 
+    if(r_fd_s < 0 && errno != EAGAIN) { 
       perror("error reading the pipe s from master"); // checking errors
       logger(log_pn_master, "e1000"); // write a error log message
     }
@@ -216,12 +230,6 @@ int main() {
     memset(s_rcv_p, 0, sizeof(s_rcv)); // clear the receiving messages array
     
     // Watchdogs:
-    struct stat command_info; // declare the struct where i will store the command log file information
-    struct stat motor1_info; // declare the struct where i will store the motor1 log file information
-    struct stat motor2_info; // declare the struct where i will store the motor2 log file information
-    struct stat error_info; // declare the struct where i will store the error log file information
-    struct stat inspect_info; // declare the struct where i will store the inspect log file information
-    time_t t; // declare the current time
 
     if(stat(log_pn_command, &command_info) < 0) { // save the log file information of the command in the struct
       perror("error while reading the command log file informations"); // checking errors
@@ -259,14 +267,15 @@ int main() {
     }
   }
   
-  // closure
-  int status[5]; // array where i will put the exit status of all the processes
-  int *status_p = status; // pointer to the previous arrray
+  // closure:
   waitpid(pid_cmd, status_p, 0); // wait for the proces to be closed and return the status
   waitpid(pid_m1, status_p+1, 0); // wait for the proces to be closed and return the status
   waitpid(pid_m2, status_p+2, 0); // wait for the proces to be closed and return the status
   waitpid(pid_err, status_p+3, 0); // wait for the proces to be closed and return the status
   waitpid(pid_insp, status_p+4, 0); // wait for the proces to be closed and return the status
+
+  close (fd_s); // close the pipe of the signal from the inspect
+  unlink(ins_s_mass); // delete the filename of the pipe s
 
   printf ("the following process exited with the following errors: command console %d; motor1 %d; motor2 %d; error %d; inspection console %d;", status[0], status[1], status[2], status[3], status[4]); // print why the processes where closed
   return 0;

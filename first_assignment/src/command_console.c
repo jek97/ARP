@@ -2,11 +2,18 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <signal.h>
+
+// declare some global variables:
+int Vx_m1; // inizialize the file descriptor of the pipe Vx
+int Vz_m2; // inizialize the file descriptor of the pipe Vz
+char *Vx = "./bin/named_pipes/Vx"; // initialize the pipe Vx pathname
+char *Vz = "./bin/named_pipes/Vz"; // initialize the pipe Vx pathname
 
 int logger(char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
-  double c = (double) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
+  float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
   char * log_msg_arr_p = &log_msg_arr[0]; // initialize the pointer to the log_msg_arr array
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){ // fulfill the array with the message
     perror("error in logger sprintf"); // checking errors
@@ -27,12 +34,28 @@ int logger(char * log_pathname, char log_msg[]) {
   return 1;
 }
 
-int main(int argc, char const *argv[]){
+void sig_handler(int signo) {
+    if (signo == SIGTERM) {
+        if (close(Vx_m1) < 0) { // close the pipe Vx
+            perror("error closing the pipe Vx from command"); // checking errors
+        }
+        if (close(Vz_m2) < 0) { // close the pipe Vz
+            perror("error closing the pipe Vz from command"); // checking errors
+        }
+        if (unlink(Vx) < 0) { // delete the file name from the system of the pipe Vx
+            perror("error deleting the pipe Vx from command"); // checking errors
+        }
+        if (unlink(Vz) < 0) { // delete the file name from the system of the pipe Vz
+            perror("error deleting the pipe Vz from command"); // checking errors
+        }
+        if (raise(SIGKILL) != 0) { // proces commit suicide
+            perror("error suiciding the command"); // checking errors
+        }
+    }
+}
 
-    int Vx_m1; // inizialize the file descriptor of the pipe Vx
-    int Vz_m2; // inizialize the file descriptor of the pipe Vz
-    char *Vx = "./bin/named_pipes/Vx"; // initialize the pipe Vx pathname
-    char *Vz = "./bin/named_pipes/Vz"; // initialize the pipe Vx pathname
+int main(int argc, char const *argv[]){
+    // declaring variables:
 
     int V_msg[] = {0, 1, 2}; // initialize the velocity messages array
     int * V_msg_p = &V_msg[0]; // initialize the pointer to the V_msg array
@@ -46,8 +69,14 @@ int main(int argc, char const *argv[]){
     int w_Vz_m2_3; // declaring the returned valeu of the function write to write the number 2 on the pipe Vz form cmd to motor2
 
     char * log_pn_command = "./bin/log_files/command.txt"; // initialize the log file path name
+
+    if (signal(SIGTERM, sig_handler) == SIG_ERR) { // check if there is any closure signal
+        perror("error receiving the closure signal from the master in command"); // checking errors
+        logger(log_pn_command, "e1000"); // write a error log message
+    }
+
     remove(log_pn_command); // remove the previous log file
-    logger(log_pn_command, "log legend: 0001=opened the pipes  0010= Vx--  0011 = Vx++  0100= Vx=0  0101= Vz--  0110= Vz++  0111= Vz=0.    the log number with an e in front means the relative operation failed");
+    logger(log_pn_command, "log legend: 0001=opened the pipes  0010= Vx--  0011 = Vx++  0100= Vx=0  0101= Vz--  0110= Vz++  0111= Vz=0  1000= closure signal received.    the log number with an e in front means the relative operation failed");
     
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
@@ -190,7 +219,6 @@ int main(int argc, char const *argv[]){
                 }
             }
         }
-        
         refresh();
 	}
 

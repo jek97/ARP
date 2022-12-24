@@ -8,11 +8,47 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <signal.h>
+#include <errno.h>
+
+// declare some global variables
+int x_ins_in; // declare the file descriptor of the pipe x_c
+int z_ins_in; // declare the file descriptor of the pipe z_c
+int s_ins_out; // declare the file descriptor of the pipe s 
+char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe z_c pathname
+char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
+
+void sig_handler (int signo) {
+    if (signo == SIGTERM) {
+        if (close(x_ins_in) < 0) { // close the pipe x_c
+            perror("error closing the pipe x_c from inspection"); // checking errors
+        }
+        if (close(z_ins_in) < 0) { // close the pipe z_c
+            perror("error closing the pipe z_c from inspection"); // checking errors
+        }
+        if (close(s_ins_out) < 0) { // close the pipe s
+            perror("error closing the pipe s from inspection"); // checking errors
+        }
+        if (unlink(x_c) < 0) { // delete the file name from the system of the pipe x_c
+            perror("error deleting the pipe x_c from inspection"); // checking errors
+        }
+        if (unlink(z_c) < 0) { // delete the file name from the system of the pipe z_c
+            perror("error deleting the pipe z_c from inspection"); // checking errors
+        }
+        if (unlink(s) < 0) { // delete the file name from the system of the pipe s
+            perror("error deleting the pipe s from inspection"); // checking errors
+        }
+        if (raise(SIGKILL) != 0) { // proces commit suicide
+            perror("error suiciding the inspection"); // checking errors
+        }
+    }
+}
 
 int logger(char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
-  double c = (double) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
+  float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
   char * log_msg_arr_p = &log_msg_arr[0]; // initialize the pointer to the log_msg_arr array
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){ // fulfill the array with the message
     perror("error in logger sprintf"); // checking errors
@@ -34,13 +70,6 @@ int logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]){
-    int x_ins_in; // declare the file descriptor of the pipe x_c
-    int z_ins_in; // declare the file descriptor of the pipe z_c
-    int s_ins_out; // declare the file descriptor of the pipe s 
-    char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
-    char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe z_c pathname
-    char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
-
     float x_rcv[4]; // declare the x position receiving buffer
     float * x_rcv_p = &x_rcv[0]; // initialize the pointer to the x_rcv array
     float z_rcv[4]; // declare the z position receiving buffer
@@ -63,14 +92,20 @@ int main(int argc, char const *argv[]){
     int w_s_ins_out_2; // declaring the returned valeu of the write function on the pipe s, for the reset signal
 
     char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
+
     remove(log_pn_inspect); // remove the previous log file
-    logger(log_pn_inspect, "log legend:  0001=opened the pipes  0010= x received  0011= z received  0100= stop signal sended  0101= reset signal sended  1010= timer elapsed without new messages.    the log number with an e in front means the relative operation failed");
+    logger(log_pn_inspect, "log legend:  0001=opened the pipes  0010= x received  0011= z received  0100= stop signal sended  0101= reset signal sended  1010= timer elapsed without new messages  1011= closure signal received.    the log number with an e in front means the relative operation failed");
 
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
     // Initialize User Interface 
     init_console_ui();
+
+    if (signal(SIGTERM, sig_handler) == SIG_ERR) { // check if there is any closure signal
+        perror("error receiving the closure signal from the master in inspection"); // checking errors
+        logger(log_pn_inspect, "e1011"); // write a error log message
+    }
 
     // open the pipes:
     // input pipes:
@@ -119,7 +154,7 @@ int main(int argc, char const *argv[]){
         tv.tv_usec = 50; // set the time interval in microseconds
 
         s_ins = select((nfds+1), &rfds, NULL, NULL, &tv);
-        if (s_ins < 0) { 
+        if (s_ins < 0 && errno != EAGAIN) { 
             perror("error in the select of inspect"); // checking errors
             logger(log_pn_inspect, "e0010"); // write a error log message
         }

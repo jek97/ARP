@@ -8,11 +8,55 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
+#include <errno.h>
+
+// declare some global variables:
+int x_e_in; // declare the file descriptor of the pipe x
+int z_e_in; // declare the file descriptor of the pipe z
+int x_e_out; // declare the file descriptor of the pipe x_c (corrected)
+int z_e_out; // declare the file descriptor of the pipe z_c (corrected)
+char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
+char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
+char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe x_c pathname
+
+void sig_handler (int signo) {
+    if (signo == SIGTERM) {
+        if (close(x_e_in) < 0) { // close the pipe x
+            perror("error closing the pipe x from error proces"); // checking errors
+        }
+        if (close(z_e_in) < 0) { // close the pipe z
+            perror("error closing the pipe z from error proces"); // checking errors
+        }
+        if (close(x_e_out) < 0) { // close the pipe x_c
+            perror("error closing the pipe x_c from error proces"); // checking errors
+        }
+        if (close(z_e_out) < 0) { // close the pipe z_c
+            perror("error closing the pipe z_c from error proces"); // checking errors
+        }
+        if (unlink(x) < 0) { // delete the file name from the system of the pipe x
+            perror("error deleting the pipe x from error proces"); // checking errors
+        }
+        if (unlink(z) < 0) { // delete the file name from the system of the pipe z
+            perror("error deleting the pipe z from error proces"); // checking errors
+        }
+        if (unlink(x_c) < 0) { // delete the file name from the system of the pipe x_c
+            perror("error deleting the pipe x_c from error proces"); // checking errors
+        }
+        if (unlink(z_c) < 0) { // delete the file name from the system of the pipe z_c
+            perror("error deleting the pipe z_c from error proces"); // checking errors
+        }
+        if (raise(SIGKILL) != 0) { // proces commit suicide
+            perror("error suiciding the error proces"); // checking errors
+        }
+    }
+}
 
 int logger(char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
-  double c = (double) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
+  float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
   char * log_msg_arr_p = &log_msg_arr[0]; // initialize the pointer to the log_msg_arr array
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){ // fulfill the array with the message
     perror("error in logger sprintf"); // checking errors
@@ -34,17 +78,6 @@ int logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]) {
-
-    int x_e_in; // declare the file descriptor of the pipe x
-    int z_e_in; // declare the file descriptor of the pipe z
-    char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
-    char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
-
-    int x_e_out; // declare the file descriptor of the pipe x_c (corrected)
-    int z_e_out; // declare the file descriptor of the pipe z_c (corrected)
-    char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
-    char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe x_c pathname
-
     float x_rcv[4]; // declare the x position receiving buffer
     float * x_rcv_p = &x_rcv[0]; // initialize the pointer to the x_rcv array
     float z_rcv[4]; // declare the z position receiving buffer
@@ -61,10 +94,6 @@ int main(int argc, char const *argv[]) {
     int nfds; // declaring number of fd
 
     float e; // declare the random number
-    int rnum_u_x; // declare the upper bound for the random number of x multiplied by 100 (= (x + 15% x)*100)
-    int rnum_u_z; // declare the upper bound for the random number of z multiplied by 100 (= (z + 15% z)*100)
-    int rnum_l_x; // declare the lower bound for the random number of x multiplied by 100 (= (x - 15% x)*100)
-    int rnum_l_z; // declare the lower bound for the random number of z multiplied by 100 (= (x - 15% x)*100)
 
     float x_e; // declare the internal computed and used x
     float x_e_i; // declare the internal x used for the evaluations
@@ -83,8 +112,14 @@ int main(int argc, char const *argv[]) {
     int w_z_e_out; // declaring the returned valeu of the write function on the pipe z_c
 
     char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
+
     remove(log_pn_error); // remove the previous log file
-    logger(log_pn_error, "log legend:  0001=opened the pipes  0010= x received and error computed  0011 = x exceed upper bound  0100= x exceed lower bound  0101= x sended to inspect  0110= z received and error computed  0111= z exceed upper bound  1000= z exceed the lower bound  1001= z sended to the inspect  1010= selet sucseed  1011= select timer elapsed before receiving data.    the log number with an e in front means the relative operation failed");
+    logger(log_pn_error, "log legend:  0001=opened the pipes  0010= x received and error computed  0011 = x exceed upper bound  0100= x exceed lower bound  0101= x sended to inspect  0110= z received and error computed  0111= z exceed upper bound  1000= z exceed the lower bound  1001= z sended to the inspect  1010= selet sucseed  1011= select timer elapsed before receiving data  1100= closure signal received.    the log number with an e in front means the relative operation failed");
+
+    if (signal(SIGTERM, sig_handler) == SIG_ERR) { // check if there is any closure signal
+        perror("error receiving the closure signal from the master in error"); // checking errors
+        logger(log_pn_error, "e1100"); // write a error log message
+    }
 
     // open the pipes:
     // input pipes
@@ -133,12 +168,11 @@ int main(int argc, char const *argv[]) {
         tv.tv_usec = 0; // set the time interval in microseconds
 
         sel_err = select(nfds, &rfds, NULL, NULL, &tv); // checking if there is any pipe avaiable for the reading
-        if (sel_err < 0) { 
+        if (sel_err < 0 && errno != EAGAIN) { 
             perror("error in the select of error proces"); // checking errors
             logger(log_pn_error, "e1010"); // write a error log message
         }
         else if (sel_err == 0){
-            perror("timer elapsed in error proces input select without data"); // checking errors
             logger(log_pn_error, "1011"); // write a log message
         }
         else if (sel_err > 0){
@@ -158,9 +192,8 @@ int main(int argc, char const *argv[]) {
                     }
                     else {
                         // setting up the random variables
-                        rnum_u_x = ((int)(x_e_i * 100)) + ((int)(x_e_i * 15)); // seting the upper bound for the x error
-                        rnum_l_x = ((int)(x_e_i * 100)) - ((int)(x_e_i * 15)); // seting the lower bound for the x error
-                        x_e = ((rand() % (rnum_u_x - rnum_l_x + 1)) + rnum_l_x) / 100.00; // compute the error
+                        e = ((rand() % (100 + 1)) - 50) / 100.00; // compute the error
+                        x_e = x_e_i + e;
                     }
                     x_prev = x_e_i; // setting the valeu of x for the next iteration
                     x_e_prev = x_e; 
@@ -205,9 +238,8 @@ int main(int argc, char const *argv[]) {
                     }
                     else {
                         // setting up the random variables
-                        rnum_u_z = ((int)(z_e_i * 100)) + ((int)(z_e_i * 15)); // setting the upper bound for the z error
-                        rnum_l_z = ((int)(z_e_i * 100)) - ((int)(z_e_i * 15)); // setting the upper bound for the z error
-                        z_e = ((rand() % (rnum_u_z - rnum_l_z + 1)) + rnum_l_z) / 100.00; // compute the error
+                        e = ((rand() % (100 + 1)) - 50) / 100.00; // compute the error
+                        z_e = z_e_i + e;
                     }
                     z_prev = z_e_i; // setting the valeu of z for the next iteration
                     z_e_prev = z_e;

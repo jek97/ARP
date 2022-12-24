@@ -7,9 +7,15 @@
 #include <signal.h>
 #include <time.h>
 #include <string.h>
+#include <errno.h>
 
+// initialize some global variables:
 float x_i = 0; // initialize position along x axis
 float Vx_i = 0; // initialize the velocity along x
+int Vx_m1; // inizialize the file descriptor of the pipe Vx
+int x_m1; // inizialize the file descriptor of the pipe x
+char *Vx = "./bin/named_pipes/Vx";// initialize the pipe Vx pathname
+char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
 
 void sig_handler (int signo) {
     if (signo == SIGUSR1) { // stop signal received
@@ -22,12 +28,29 @@ void sig_handler (int signo) {
         x_i = -0.1; // set the position x to 0, thanks to the error proces also
         sleep(1);
     }
+    else if (signo == SIGTERM) {
+        if (close(Vx_m1) < 0) { // close the pipe Vx
+            perror("error closing the pipe Vx from motor1"); // checking errors
+        }
+        if (close(x_m1) < 0) { // close the pipe x
+            perror("error closing the pipe x from motor1"); // checking errors
+        }
+        if (unlink(Vx) < 0) { // delete the file name from the system of the pipe Vx
+            perror("error deleting the pipe Vx from motor1"); // checking errors
+        }
+        if (unlink(x) < 0) { // delete the file name from the system of the pipe x
+            perror("error deleting the pipe x from motor1"); // checking errors
+        }
+        if (raise(SIGKILL) != 0) { // proces commit suicide
+            perror("error suiciding the motor1"); // checking errors
+        }
+    }
 }
 
 int logger(char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
-  double c = (double) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
+  float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
   char * log_msg_arr_p = &log_msg_arr[0]; // initialize the pointer to the log_msg_arr array
   if ((sprintf(log_msg_arr, " %s,%.2E;", log_msg, c)) < 0){ // fulfill the array with the message
     perror("error in logger sprintf"); // checking errors
@@ -49,12 +72,6 @@ int logger(char * log_pathname, char log_msg[]) {
 }
 
 int main(int argc, char const *argv[]) {
-
-    int Vx_m1; // inizialize the file descriptor of the pipe Vx
-    int x_m1; // inizialize the file descriptor of the pipe x
-
-    char *Vx = "./bin/named_pipes/Vx";// initialize the pipe Vx pathname
-    char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
     int Vx_rcv[1]; // initialize the buffer where i will store the received variable from the pipe Vx
     int * Vx_rcv_p = &Vx_rcv[0]; // initialize the pointer to the Vx_rcv array
     float x_snd[4]; // initialize the buffer where i will send the position x
@@ -65,18 +82,24 @@ int main(int argc, char const *argv[]) {
     int w_x_m1; // declaring the returned valeu of the write function on the pipe x
 
     char * log_pn_motor1 = "./bin/log_files/motor1.txt"; // initialize the log file path name
+
     remove(log_pn_motor1); // remove the previous log file
-    logger(log_pn_motor1, "log legend:  0001=opened the pipes  0010= no message received  0011 = decrease velocity  0100= velocity=0  0101= increase velocity  0110= reached upper bound  0111= reached lower bound  1000= writed the position on the pipe  1001=stop signal received  1010= reset signal received.    the log number with an e in front means the relative operation failed");
+    logger(log_pn_motor1, "log legend:  0001=opened the pipes  0010= no message received  0011 = decrease velocity  0100= velocity=0  0101= increase velocity  0110= reached upper bound  0111= reached lower bound  1000= writed the position on the pipe  1001=stop signal received  1010= reset signal received  1011= closure signal received.    the log number with an e in front means the relative operation failed");
 
     // condition for the signal:
     if (signal(SIGUSR1, sig_handler) == SIG_ERR) { // check if there is any stop signal
-        perror("error receiving the signal from command_console"); // checking errors
+        perror("error receiving the signal from command_console in motor1"); // checking errors
         logger(log_pn_motor1, "e1001"); // write a error log message
     }
 
     if (signal(SIGUSR2, sig_handler) == SIG_ERR) { // check if there is any reset signal
-        perror("error receiving the signal from command_console"); // checking errors
+        perror("error receiving the signal from command_console in motor1"); // checking errors
         logger(log_pn_motor1, "e1010"); // write a error log message
+    }
+
+    if (signal(SIGTERM, sig_handler) == SIG_ERR) { // check if there is any closure signal
+        perror("error receiving the closure signal from the master in motor1"); // checking errors
+        logger(log_pn_motor1, "e1011"); // write a error log message
     }
     
     // open the pipes:
@@ -100,10 +123,10 @@ int main(int argc, char const *argv[]) {
     while(1) {
         // read the pipe and compute the position along x
         r_Vx_m1 = read(Vx_m1, Vx_rcv_p, 1); // reading the pipe Vx
-        if(r_Vx_m1 <= 0) {
+        if(r_Vx_m1 < 0 && errno != EAGAIN) {
             perror("error reading the pipe Vx from m1"); // checking errors
             x_i = x_i + (Vx_i * T);
-            logger(log_pn_motor1, "0010"); // write a error log message
+            logger(log_pn_motor1, "e0010"); // write a error log message
         }
 
         else if (r_Vx_m1 > 0) { 
@@ -123,6 +146,10 @@ int main(int argc, char const *argv[]) {
                 x_i = x_i + (Vx_i * T);
                 logger(log_pn_motor1, "0101"); // write a log message
             }
+        }
+        else {
+            x_i = x_i + (Vx_i * T);
+            logger(log_pn_motor1, "0010"); // write a error log message
         }
 
         // constrol if x reached the upper bound:
