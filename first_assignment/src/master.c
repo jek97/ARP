@@ -9,6 +9,8 @@
 #include <time.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 int mkpipe(const char *pathname, mode_t mode) { // function to create a named pipe
   int pipe; // declare the returned valeu of the mkfifo funtion
@@ -44,7 +46,7 @@ int spawn(const char * program, char * arg_list[]) {
   }
 }
 
-int logger(char * log_pathname, char log_msg[]) {
+int logger(const char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
   float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
@@ -70,45 +72,51 @@ int logger(char * log_pathname, char log_msg[]) {
 
 int main() {
   // declaring variables:
+  // directories:
+  const char * log_dir = "./bin/log_files"; // initialize the pathname of the log directory
+  mode_t log_dir_mode = 0777; // initialize the log directory mode
+  const char * pipes_dir = "./bin/named_pipes"; // initialize the pathname of the named pipes directory
+  mode_t pipes_dir_mode = 0777; // initialize the named pipes directory mode
+  
   //logger:
-  char * log_pn_master = "./bin/log_files/master.txt"; // initialize the log file path name
-  char * log_pn_command = "./bin/log_files/command.txt"; // initialize the log file path name
-  char * log_pn_motor1 = "./bin/log_files/motor1.txt"; // initialize the log file path name
-  char * log_pn_motor2 = "./bin/log_files/motor2.txt"; // initialize the log file path name
-  char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
-  char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
+  const char * log_pn_master = "./bin/log_files/master.txt"; // initialize the log file path name
+  const char * log_pn_command = "./bin/log_files/command.txt"; // initialize the log file path name
+  const char * log_pn_motor1 = "./bin/log_files/motor1.txt"; // initialize the log file path name
+  const char * log_pn_motor2 = "./bin/log_files/motor2.txt"; // initialize the log file path name
+  const char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
+  const char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
 
   // declering the mkpipe() arguments:
   // % from cmd to m1, m2:
   int cmd_Vx_m1_r; // inizialize the returned valeu from mkpipe
-  char *cmd_Vx_m1 = "./bin/named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
+  const char *cmd_Vx_m1 = "./bin/named_pipes/Vx"; // pathname of the pipe from cmd to m1 through Vx
   mode_t cmd_Vx_m1_mode = 0777; // mode of the pipe from cmd to m1 through Vx
   
   int cmd_Vz_m2_r; // inizialize the returned valeu from mkpipe
-  char *cmd_Vz_m2 = "./bin/named_pipes/Vz"; // pathname of the pipe from cmd to m2 through Vz
+  const char *cmd_Vz_m2 = "./bin/named_pipes/Vz"; // pathname of the pipe from cmd to m2 through Vz
   mode_t cmd_Vz_m2_mode = 0777; // mode of the pipe from cmd to m2 through Vz
 
   // % from m1,m2 to error:
   int m1_x_err_r; // inizialize the returned valeu from mkpipe
-  char *m1_x_err = "./bin/named_pipes/x"; // pathname of the pipe from m1 to error through x
+  const char *m1_x_err = "./bin/named_pipes/x"; // pathname of the pipe from m1 to error through x
   mode_t m1_x_err_mode = 0777; // mode of the pipe from m1 to error through x
 
   int m2_z_err_r; // inizialize the returned valeu from mkpipe
-  char *m2_z_err = "./bin/named_pipes/z"; // pathname of the pipe from m2 to error through z
+  const char *m2_z_err = "./bin/named_pipes/z"; // pathname of the pipe from m2 to error through z
   mode_t m2_z_err_mode = 0777; // mode of the pipe from m2 to error through z
 
   // % form error to inspect:
   int err_x_c_ins_r; // inizialize the returned valeu from mkpipe
-  char *err_x_c_ins = "./bin/named_pipes/x_c"; // pathname of the pipe from error to inspect through x_c
+  const char *err_x_c_ins = "./bin/named_pipes/x_c"; // pathname of the pipe from error to inspect through x_c
   mode_t err_x_c_ins_mode = 0777; // mode of the pipe from error to inspect through x_c
 
   int err_z_c_ins_r; // inizialize the returned valeu from mkpipe
-  char *err_z_c_ins = "./bin/named_pipes/z_c"; // pathname of the pipe from error to inspect through z_c
+  const char *err_z_c_ins = "./bin/named_pipes/z_c"; // pathname of the pipe from error to inspect through z_c
   mode_t err_z_c_ins_mode = 0777; // mode of the pipe from error to inspect through z_c
 
   // % from inspect to master for the signals:
   int ins_s_mass_r; // inizialize the returned valeu from mkpipe
-  char *ins_s_mass = "./bin/named_pipes/s"; // pathname of the pipe from inspect to master through s
+  const char *ins_s_mass = "./bin/named_pipes/s"; // pathname of the pipe from inspect to master through s
   mode_t ins_s_mass_mode = 0777; // mode of the pipe from inspect to master through s
 
   // declaring the spawn() arguments:
@@ -122,7 +130,7 @@ int main() {
   int fd_s; // declare the file descriptor for the pipe s
   int s_rcv[1]; // declare the array where i will store the signal id
   int * s_rcv_p = &s_rcv[0]; // initialize the pointer to the s_rcv array
-  int r_fd_s; // declare the returned valeu of the read function on the signal pipe
+  ssize_t r_fd_s; // declare the returned valeu of the read function on the signal pipe
   int k_stop_1; // declaring the returned valeu of the kill function that stops the motors
   int k_stop_2; // declaring the returned valeu of the kill function that stops the motors
   int k_rst_1; // declaring the returned valeu of the kill function that reset the simulation
@@ -146,6 +154,19 @@ int main() {
   int status[5]; // array where i will put the exit status of all the processes
   int *status_p = status; // pointer to the previous arrray
   
+  // create the directories for the og files and the named pipes:
+  if(opendir(log_dir) == NULL) { // try to open the directory to check if it exists
+    if (mkdir(log_dir, log_dir_mode) < 0) { // create the directory
+      perror("error creating the log_file directory from master"); // checking errors
+    }
+  }
+
+  if(opendir(pipes_dir) == NULL) { // try to open the directory to check if it exists
+    if (mkdir(pipes_dir, pipes_dir_mode) < 0) { // create the directory
+      perror("error creating the named_pipes directory from master"); // checking errors
+    }
+  }
+
   // first log:
   remove(log_pn_master); // remove the previous log file
   logger(log_pn_master, "log legend: 0001= opened the pipes  0010= spawned the processes 0011= opened the signal pipe  0100= stop signal sended  0101= reset signal sended  0111= watchdogs has killed all the processes  1000= pipe s readed.    the log number with an e in front means the relative operation failed");

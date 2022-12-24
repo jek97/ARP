@@ -14,8 +14,8 @@ float x_i = 0; // initialize position along x axis
 float Vx_i = 0; // initialize the velocity along x
 int Vx_m1; // inizialize the file descriptor of the pipe Vx
 int x_m1; // inizialize the file descriptor of the pipe x
-char *Vx = "./bin/named_pipes/Vx";// initialize the pipe Vx pathname
-char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
+const char *Vx = "./bin/named_pipes/Vx";// initialize the pipe Vx pathname
+const char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
 
 void sig_handler (int signo) {
     if (signo == SIGUSR1) { // stop signal received
@@ -47,7 +47,7 @@ void sig_handler (int signo) {
     }
 }
 
-int logger(char * log_pathname, char log_msg[]) {
+int logger(const char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
   float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
@@ -78,10 +78,10 @@ int main(int argc, char const *argv[]) {
     float * x_snd_p = &x_snd[0]; // initialize the pointer to the x_snd array
     int T = 1; // initialize the time period of the speed
 
-    int r_Vx_m1; // declaring the returned valeu of the read function on the pipe Vx
-    int w_x_m1; // declaring the returned valeu of the write function on the pipe x
+    ssize_t r_Vx_m1; // declaring the returned valeu of the read function on the pipe Vx
+    ssize_t w_x_m1; // declaring the returned valeu of the write function on the pipe x
 
-    char * log_pn_motor1 = "./bin/log_files/motor1.txt"; // initialize the log file path name
+    const char * log_pn_motor1 = "./bin/log_files/motor1.txt"; // initialize the log file path name
 
     remove(log_pn_motor1); // remove the previous log file
     logger(log_pn_motor1, "log legend:  0001=opened the pipes  0010= no message received  0011 = decrease velocity  0100= velocity=0  0101= increase velocity  0110= reached upper bound  0111= reached lower bound  1000= writed the position on the pipe  1001=stop signal received  1010= reset signal received  1011= closure signal received.    the log number with an e in front means the relative operation failed");

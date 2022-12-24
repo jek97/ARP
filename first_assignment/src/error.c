@@ -16,10 +16,10 @@ int x_e_in; // declare the file descriptor of the pipe x
 int z_e_in; // declare the file descriptor of the pipe z
 int x_e_out; // declare the file descriptor of the pipe x_c (corrected)
 int z_e_out; // declare the file descriptor of the pipe z_c (corrected)
-char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
-char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
-char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
-char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe x_c pathname
+const char *x = "./bin/named_pipes/x"; // initialize the pipe x pathname
+const char *z = "./bin/named_pipes/z"; // initialize the pipe z pathname
+const char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+const char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe x_c pathname
 
 void sig_handler (int signo) {
     if (signo == SIGTERM) {
@@ -53,7 +53,7 @@ void sig_handler (int signo) {
     }
 }
 
-int logger(char * log_pathname, char log_msg[]) {
+int logger(const char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
   float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
@@ -105,13 +105,13 @@ int main(int argc, char const *argv[]) {
     float z_e_prev = 0.000000; // declare the previous valeu setted of z
 
     int sel_err; // declaring the returned valeu of the function select
-    int r_x_e_in; // declaring the returned valeu of the read function on the pipe x
-    int r_z_e_in; // declaring the returned valeu of the read function on the pipe z
+    ssize_t r_x_e_in; // declaring the returned valeu of the read function on the pipe x
+    ssize_t r_z_e_in; // declaring the returned valeu of the read function on the pipe z
 
-    int w_x_e_out; // declaring the returned valeu of the write function on the pipe x_c
-    int w_z_e_out; // declaring the returned valeu of the write function on the pipe z_c
+    ssize_t w_x_e_out; // declaring the returned valeu of the write function on the pipe x_c
+    ssize_t w_z_e_out; // declaring the returned valeu of the write function on the pipe z_c
 
-    char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
+    const char * log_pn_error = "./bin/log_files/error.txt"; // initialize the log file path name
 
     remove(log_pn_error); // remove the previous log file
     logger(log_pn_error, "log legend:  0001=opened the pipes  0010= x received and error computed  0011 = x exceed upper bound  0100= x exceed lower bound  0101= x sended to inspect  0110= z received and error computed  0111= z exceed upper bound  1000= z exceed the lower bound  1001= z sended to the inspect  1010= selet sucseed  1011= select timer elapsed before receiving data  1100= closure signal received.    the log number with an e in front means the relative operation failed");

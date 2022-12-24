@@ -15,9 +15,9 @@
 int x_ins_in; // declare the file descriptor of the pipe x_c
 int z_ins_in; // declare the file descriptor of the pipe z_c
 int s_ins_out; // declare the file descriptor of the pipe s 
-char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
-char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe z_c pathname
-char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
+const char *x_c = "./bin/named_pipes/x_c"; // initialize the pipe x_c pathname
+const char *z_c = "./bin/named_pipes/z_c"; // initialize the pipe z_c pathname
+const char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
 
 void sig_handler (int signo) {
     if (signo == SIGTERM) {
@@ -45,7 +45,7 @@ void sig_handler (int signo) {
     }
 }
 
-int logger(char * log_pathname, char log_msg[]) {
+int logger(const char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
   float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
@@ -86,12 +86,12 @@ int main(int argc, char const *argv[]){
     float x, z; // End-effector coordinates
 
     int s_ins; // declaring the returned valeu of the function select
-    int r_x_ins_in; // declaring the returned valeu of the read function on the pipe x_c
-    int r_z_ins_in; // declaring the returned valeu of the read function on the pipe z_c
-    int w_s_ins_out_1; // declaring the returned valeu of the write function on the pipe s, for the stop signal
-    int w_s_ins_out_2; // declaring the returned valeu of the write function on the pipe s, for the reset signal
+    ssize_t r_x_ins_in; // declaring the returned valeu of the read function on the pipe x_c
+    ssize_t r_z_ins_in; // declaring the returned valeu of the read function on the pipe z_c
+    ssize_t w_s_ins_out_1; // declaring the returned valeu of the write function on the pipe s, for the stop signal
+    ssize_t w_s_ins_out_2; // declaring the returned valeu of the write function on the pipe s, for the reset signal
 
-    char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
+    const char * log_pn_inspect = "./bin/log_files/inspect.txt"; // initialize the log file path name
 
     remove(log_pn_inspect); // remove the previous log file
     logger(log_pn_inspect, "log legend:  0001=opened the pipes  0010= x received  0011= z received  0100= stop signal sended  0101= reset signal sended  1010= timer elapsed without new messages  1011= closure signal received.    the log number with an e in front means the relative operation failed");

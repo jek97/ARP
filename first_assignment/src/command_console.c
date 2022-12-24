@@ -7,10 +7,10 @@
 // declare some global variables:
 int Vx_m1; // inizialize the file descriptor of the pipe Vx
 int Vz_m2; // inizialize the file descriptor of the pipe Vz
-char *Vx = "./bin/named_pipes/Vx"; // initialize the pipe Vx pathname
-char *Vz = "./bin/named_pipes/Vz"; // initialize the pipe Vx pathname
+const char *Vx = "./bin/named_pipes/Vx"; // initialize the pipe Vx pathname
+const char *Vz = "./bin/named_pipes/Vz"; // initialize the pipe Vx pathname
 
-int logger(char * log_pathname, char log_msg[]) {
+int logger(const char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
   float c = (float) (clock() / CLOCKS_PER_SEC); // evaluate the time from the program launch
@@ -60,15 +60,15 @@ int main(int argc, char const *argv[]){
     int V_msg[] = {0, 1, 2}; // initialize the velocity messages array
     int * V_msg_p = &V_msg[0]; // initialize the pointer to the V_msg array
 
-    int w_Vx_m1_1; // declaring the returned valeu of the function write to write the number 0 on the pipe Vx form cmd to motor1
-    int w_Vx_m1_2; // declaring the returned valeu of the function write to write the number 1 on the pipe Vx form cmd to motor1
-    int w_Vx_m1_3; // declaring the returned valeu of the function write to write the number 2 on the pipe Vx form cmd to motor1
+    ssize_t w_Vx_m1_1; // declaring the returned valeu of the function write to write the number 0 on the pipe Vx form cmd to motor1
+    ssize_t w_Vx_m1_2; // declaring the returned valeu of the function write to write the number 1 on the pipe Vx form cmd to motor1
+    ssize_t w_Vx_m1_3; // declaring the returned valeu of the function write to write the number 2 on the pipe Vx form cmd to motor1
 
-    int w_Vz_m2_1; // declaring the returned valeu of the function write to write the number 0 on the pipe Vz form cmd to motor2
-    int w_Vz_m2_2; // declaring the returned valeu of the function write to write the number 1 on the pipe Vz form cmd to motor2
-    int w_Vz_m2_3; // declaring the returned valeu of the function write to write the number 2 on the pipe Vz form cmd to motor2
+    ssize_t w_Vz_m2_1; // declaring the returned valeu of the function write to write the number 0 on the pipe Vz form cmd to motor2
+    ssize_t w_Vz_m2_2; // declaring the returned valeu of the function write to write the number 1 on the pipe Vz form cmd to motor2
+    ssize_t w_Vz_m2_3; // declaring the returned valeu of the function write to write the number 2 on the pipe Vz form cmd to motor2
 
-    char * log_pn_command = "./bin/log_files/command.txt"; // initialize the log file path name
+    const char * log_pn_command = "./bin/log_files/command.txt"; // initialize the log file path name
 
     if (signal(SIGTERM, sig_handler) == SIG_ERR) { // check if there is any closure signal
         perror("error receiving the closure signal from the master in command"); // checking errors
