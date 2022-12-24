@@ -60,7 +60,7 @@ sudo apt-get install libncurses-dev
 
 ## How the simulator works
 
-The master process controls all the communcations between processes, every porcess communicates with another using named pipes and signals.
+The master process controls all the communcations between processes, every process communicates with another using named pipes and signals.
 The command console is in charge of recieving the inputs from the user in order to make the hoist move along the directions x and y.
 Motor1 and Motor2 simulates the motors whereas the error process adds a random error on the positions to make the problem more real life-like.
 In the inspection console the user can either stop the movement of the Hoist or can reset its position.
