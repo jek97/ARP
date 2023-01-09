@@ -11,6 +11,9 @@
 #include <time.h>
 #include <string.h>
 
+#define SEMAPHORE1 "/semaphore1"
+#define SEMAPHORE2 "/semaphore2"
+
 int logger(const char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
   char log_msg_arr[strlen(log_msg)+11]; // declare the message string
@@ -38,6 +41,7 @@ int logger(const char * log_pathname, char log_msg[]) {
 int main(int argc, char const *argv[]) {
     // logger variable
     const char * log_pn_processB = "./bin/log_files/processB.txt"; // initialize the log file path name
+    remove(log_pn_processB); // remove the old log file
 
     // declaring some variables for the shared memory:
     const char * shm = "/shm"; // initialize the pathname of the shared memory
@@ -46,10 +50,10 @@ int main(int argc, char const *argv[]) {
 
     // declaring some variables for the semphores:
     sem_t * sem1; // declaring the semaphore 1 adress
-    const char * semaphore1 = "/semaphore1"; // initialize the pathname of the semaphore1
+    //const char * semaphore1 = "/semaphore1"; // initialize the pathname of the semaphore1
     int sem1_r; // declare the returned valeu of the wait function on semaphore 1
     sem_t * sem2; // declaring the semaphore 2 adress
-    const char * semaphore2 = "/semaphore2"; // initialize the pathname of the semaphore2
+    //const char * semaphore2 = "/semaphore2"; // initialize the pathname of the semaphore2
     int sem2_r; // declare the returned valeu of the post function on semaphore 2
 
     // declare some internal variable:
@@ -57,10 +61,10 @@ int main(int argc, char const *argv[]) {
     rgb_pixel_t * p_color_ptr = &p_color; // initialize the pointer to the pixel color
     rgb_pixel_t c_color = {0, 255, 0, 255}; // initialize the circle color (BRGA) to red
     int c_counter = 0; // initialize the color counter
-    int xc_shm; // declare the position of the center of the circle along x in the shared memory
-    int yc_shm; // declare the position of the center of the circle along y in the shared memory
-    int xc_w[80]; // declare the array where i will store the position of the center of the circle along x in the ncurse window
-    int yc_w[30]; // declare the array where i will store the position of the center of the circle along y in the ncurse window
+    int xc_shm = 0; // declare the position of the center of the circle along x in the shared memory
+    int yc_shm = 0; // declare the position of the center of the circle along y in the shared memory
+    int xc_w[80] = {0}; // declare the array where i will store the position of the center of the circle along x in the ncurse window
+    int yc_w[30] = {0}; // declare the array where i will store the position of the center of the circle along y in the ncurse window
     int k; // declare the iteration variable
     int w; // declare the iteration variable
     
@@ -83,7 +87,7 @@ int main(int argc, char const *argv[]) {
     init_console_ui();
 
     // open the shared memory:
-    shm_fd = shm_open(shm, O_RDONLY, 0666); // opening for read the shared memory
+    shm_fd = shm_open(shm, O_RDONLY, 0777); // opening for read the shared memory
     if (shm_fd < 0) {
         perror("error opening the shared memory from processB"); // checking errors
         logger(log_pn_processB, "e0010"); // write a log message
@@ -101,7 +105,7 @@ int main(int argc, char const *argv[]) {
     }
 
     // open the semaphores:
-    sem1 = sem_open(semaphore1, O_CREAT, S_IRUSR | S_IWUSR, 1); // opening the semaphore1 with a starting valeu of 1
+    sem1 = sem_open(SEMAPHORE1, 0); // opening the semaphore1 with a starting valeu of 1
     if (sem1 < 0) {
         perror("error opening the semaphore1 from processB"); // checking errors
         logger(log_pn_processB, "e0100"); // write a log message
@@ -109,7 +113,7 @@ int main(int argc, char const *argv[]) {
     else {
         logger(log_pn_processB, "0100"); // write a log message
     }
-    sem2 = sem_open(semaphore2, O_CREAT, S_IRUSR | S_IWUSR, 0); // opening the semaphore2 with a starting valeu of 0
+    sem2 = sem_open(SEMAPHORE2, 0); // opening the semaphore2 with a starting valeu of 0
     if (sem2 < 0) {
         perror("error opening the semaphore2 from processB"); // checking errors
         logger(log_pn_processB, "e0101"); // write a log message
@@ -120,12 +124,14 @@ int main(int argc, char const *argv[]) {
 
     // Infinite loop
     while (TRUE) {
+        logger(log_pn_processB, "a");
 
         // Get input in non-blocking mode
         int cmd = getch();
 
         // If user resizes screen, re-draw UI...
         if(cmd == KEY_RESIZE) {
+            logger(log_pn_processB, "b");
             if(first_resize) {
                 first_resize = FALSE;
             }
@@ -135,6 +141,7 @@ int main(int argc, char const *argv[]) {
         }
 
         else {
+            logger(log_pn_processB, "c");
             sem2_r = sem_wait(sem2); // get the exclusive access to the shared memory
             if (sem2_r == -1) {
                 perror("error in the wait function on the semaphore 2 in the processB"); // checking errors
@@ -145,35 +152,34 @@ int main(int argc, char const *argv[]) {
                 int i_max = bmp_get_width(shm_ptr); // number of row of the picture
                 int j_max = bmp_get_height(shm_ptr); // number of column of the picture
                 for (int i = 1; i <= i_max; i++) { // scanning the image first along the rows than along the columns
-                    if (c_counter != 60) { // if i didn't identify the center yet
-                        for (int j = 1; j <= j_max; j++) {
-                            p_color_ptr = bmp_get_pixel(shm_ptr, i, j); // obtain the color of the pixel (i, j)
-                            if (p_color.red == c_color.red && p_color.green == c_color.green && p_color.blue == c_color.blue && p_color.alpha == c_color.alpha) { // if the color is red i start to detect the circle
-                                c_counter++; // increase the counter
-                            }
-                            else { // i'm not detecting the circle
-                                c_counter = 0; // set the counter to 0
-                            }
-                            if (c_counter == 60) { // i've scanned the diameter of the circle passing through the center
-                                logger(log_pn_processB, "0111"); // write a log message
-                                xc_shm = i - 30; // record the x position of the center in the shared memory
-                                yc_shm = j; // record the y position of the center in the shared memory
-                                break; // exit the last for
-                            }
+                    logger(log_pn_processB, "d");
+                    for (int j = 1; j <= j_max; j++) {
+                        logger(log_pn_processB, "e");
+                        p_color_ptr = bmp_get_pixel(shm_ptr, i, j); // obtain the color of the pixel (i, j)
+                        if (p_color.red == c_color.red && p_color.green == c_color.green && p_color.blue == c_color.blue && p_color.alpha == c_color.alpha) { // if the color is red i start to detect the circle
+                            c_counter++; // increase the counter
+                        }
+                        else { // i'm not detecting the circle
+                            c_counter = 0; // set the counter to 0
+                        }
+                        if (c_counter == 60) { // i've scanned the diameter of the circle passing through the center
+                            logger(log_pn_processB, "0111"); // write a log message
+                            xc_shm = i - 30; // record the x position of the center in the shared memory
+                            yc_shm = j; // record the y position of the center in the shared memory
+                            goto found; // exit the last for
                         }
                     }
-                    else { // i've found the center
-                        break; // exit even from the first while
-                    }
                 }
-            }
-            sem1_r = sem_post(sem1); // notify processA that i've completed the work and he can read
-            if (sem1_r == -1) {
-                perror("error in the post function on the semaphore 1 in the processB"); // checking errors
-                logger(log_pn_processB, "e1000"); // write a log message
-            }
-            else {
-                logger(log_pn_processB, "1000"); // write a log message
+                found:;
+
+                sem1_r = sem_post(sem1); // notify processA that i've completed the work and he can read
+                if (sem1_r == -1) {
+                    perror("error in the post function on the semaphore 1 in the processB"); // checking errors
+                    logger(log_pn_processB, "e1000"); // write a log message
+                }
+                else {
+                    logger(log_pn_processB, "1000"); // write a log message
+                }
             }
 
             xc_w[(xc_shm / 20)-1] = 1; // evaluate the x coordinate of the center in the window and set the corresponding array cel = 1
@@ -187,6 +193,7 @@ int main(int argc, char const *argv[]) {
             }
             logger(log_pn_processB, "1001"); // write a log message
             refresh();
+            sleep(1);
         }
     }
 

@@ -1,1 +1,1 @@
- 0001,0.00E+00; 0010,0.00E+00; log legend: 0001= opened/created the log files folder   0010= spawned the processes   0011= processes have been closed   the log number with an e in front means the relative operation failed,0.00E+00; 0010,0.00E+00; log legend: 0001= opened/created the log files folder   0010= spawned the processes   0011= processes have been closed   the log number with an e in front means the relative operation failed,0.00E+00; 0010,0.00E+00;
+ 0010,0.00E+00;

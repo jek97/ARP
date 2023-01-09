@@ -11,6 +11,9 @@
 #include <time.h>
 #include <string.h>
 
+#define SEMAPHORE1 "/semaphore1"
+#define SEMAPHORE2 "/semaphore2"
+
 int clear_picture_shm(bmpfile_t *bmp) { // function to clear a picture (all the picture white)
     rgb_pixel_t color = {255, 255, 255, 255}; // define the color white
     int i_max = bmp_get_width(bmp); // number of row of the picture
@@ -65,6 +68,7 @@ int logger(const char * log_pathname, char log_msg[]) {
 int main(int argc, char *argv[]) {
     // loger variable
     const char * log_pn_processA = "./bin/log_files/processA.txt"; // initialize the log file path name
+    remove(log_pn_processA); // remove the old log file
 
     // declaring some variables for the shared memory:
     const char * shm = "/shm"; // initialize the pathname of the shared memory
@@ -74,10 +78,10 @@ int main(int argc, char *argv[]) {
 
     // declaring some variables for the semphores:
     sem_t * sem1; // declaring the semaphore 1 adress
-    const char * semaphore1 = "/semaphore1"; // initialize the pathname of the semaphore1
+    //const char * semaphore1 = "/semaphore1"; // initialize the pathname of the semaphore1
     int sem1_r; // declare the returned valeu of the wait function on semaphore 1
     sem_t * sem2; // declaring the semaphore 2 adress
-    const char * semaphore2 = "/semaphore2"; // initialize the pathname of the semaphore2
+    //const char * semaphore2 = "/semaphore2"; // initialize the pathname of the semaphore2
     int sem2_r; // declare the returned valeu of the post function on semaphore 2
     
     // declare some variable to save the shared memory status:
@@ -104,7 +108,7 @@ int main(int argc, char *argv[]) {
     logger(log_pn_processA, "0001"); // write a log message
 
     // create the shared memory:
-    shm_fd = shm_open(shm, O_RDWR | O_CREAT, 0666); // opening/creating the shared memory
+    shm_fd = shm_open(shm, O_RDWR | O_CREAT, 0777); // opening/creating the shared memory
     if (shm_fd < 0) {
         perror("error opening the shared memory from processA"); // checking errors
         logger(log_pn_processA, "e0010"); // write a log message
@@ -135,7 +139,7 @@ int main(int argc, char *argv[]) {
     logger(log_pn_processA, "0101"); // write a log message
 
     // create the semaphores:
-    sem1 = sem_open(semaphore1, O_CREAT, S_IRUSR | S_IWUSR, 1); // create the semaphore1 with a starting valeu of 1
+    sem1 = sem_open(SEMAPHORE1, O_CREAT , S_IREAD | S_IWRITE, 1); // create the semaphore1 with a starting valeu of 1
     if (sem1 < 0) {
         perror("error opening the semaphore1 from processA"); // checking errors
         logger(log_pn_processA, "e0110"); // write a log message
@@ -143,7 +147,7 @@ int main(int argc, char *argv[]) {
     else {
         logger(log_pn_processA, "0110"); // write a log message
     }
-    sem2 = sem_open(semaphore2, O_CREAT, S_IRUSR | S_IWUSR, 0); // create the semaphore2 with a starting valeu of 0
+    sem2 = sem_open(SEMAPHORE2, O_CREAT , S_IREAD | S_IWRITE, 1); // create the semaphore2 with a starting valeu of 0
     if (sem2 < 0) {
         perror("error opening the semaphore2 from processA"); // checking errors
         logger(log_pn_processA, "e0111"); // write a log message
@@ -152,6 +156,8 @@ int main(int argc, char *argv[]) {
         logger(log_pn_processA, "0111"); // write a log message
     }
 
+    sem_init(sem1, 1, 1);
+    sem_init(sem2, 1, 0);
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
@@ -211,14 +217,14 @@ int main(int argc, char *argv[]) {
                 clear_picture_shm(shm_ptr); // clear the shared memory picture from previous circles
                 draw_circle_shm(shm_ptr, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle in the shared memory
                 logger(log_pn_processA, "1010"); // write a log message
-            }
-            sem2_r = sem_post(sem2); // notify processB that i've completed the work and he can read
-            if (sem2_r == -1) {
-                perror("error in the post function on the semaphore 2 in the processA"); // checking errors
-                logger(log_pn_processA, "e1011"); // write a log message
-            }
-            else {
-                logger(log_pn_processA, "e1011"); // write a log message
+                sem2_r = sem_post(sem2); // notify processB that i've completed the work and he can read
+                if (sem2_r == -1) {
+                    perror("error in the post function on the semaphore 2 in the processA"); // checking errors
+                    logger(log_pn_processA, "e1011"); // write a log message
+                }
+                else {
+                    logger(log_pn_processA, "1011"); // write a log message
+                }
             }
         }
     }
