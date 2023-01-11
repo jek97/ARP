@@ -31,7 +31,7 @@ int draw_circle_shm(bmpfile_t *bmp, int xc, int yc, int r, rgb_pixel_t color) { 
     int j_max = bmp_get_height(bmp); // number of column of the picture
     for (int i = 1; i <= i_max; i++) { // for all the image points
         for (int j = 1; j <= j_max; j++) {
-            float d = sqrt(((i-xc)^2)+((j-yc)^2)); // compute the distance from the circle center
+            float d = sqrt(((i-xc)*(i-xc))+((j-yc)*(j-yc))); // compute the distance from the circle center
             if (d <= r) { // if the distance is less than or equal to the radius
                 bmp_set_pixel(bmp, i, j, color); // color the pixel
             }
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
     int xc_shm; // declare the x coordinate of the center of the circle in the shared memory
     int yc_shm; // declare the y coordinate of the center of the circle in the shared memory
     int rc_shm = 30; // initialize the radius of the circle in the shared memory
-    rgb_pixel_t c_color = {0, 255, 0, 255}; // initialize the circle color (BRGA) to red
+    rgb_pixel_t c_color = {0, 0, 255, 255}; // initialize the circle color (BRGA) to red
 
     logger(log_pn_processA, "log legend: 0001= created the blanck picture for the size   0010= opened the shared memory   0011= truncated the shared memory   0100= mapped the shared memory   0101= fullfilled the shared memory with an initial image   0110= opened the semaphore 1   0111= opened the semaphore 2   1000= saved a snapshot of the shared memory   1001= decremented the semaphore1   1010= drawed the new circle   1011= incremented the semaphore 2   the log number with an e in front means the relative operation failed"); // write a log message
 
@@ -103,7 +103,8 @@ int main(int argc, char *argv[]) {
     int height = 600; // Height of the image (in pixels)
     int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
     image = bmp_create(width, height, depth); // create the image
-    off_t shm_size = sizeof(image); // obtaining the dimension of the image
+    bmp_header_t image_size = bmp_get_header(image);
+    off_t shm_size = image_size.filesz; // obtaining the dimension of the image
     bmp_destroy(image); // destroy the no more needed image
     logger(log_pn_processA, "0001"); // write a log message
 
@@ -131,15 +132,15 @@ int main(int argc, char *argv[]) {
                 logger(log_pn_processA, "0100"); // write a log message
             }
         }
-    }
-
+    }    
+    
     // fulfill the memory with the blanck image:
     shm_ptr = bmp_create(width, height, depth); // create the image
     clear_picture_shm(shm_ptr); // color the pcture in white
-    logger(log_pn_processA, "0101"); // write a log message
+    logger(log_pn_processA, "0101"); // write a log message  
 
     // create the semaphores:
-    sem1 = sem_open(SEMAPHORE1, O_CREAT , S_IREAD | S_IWRITE, 1); // create the semaphore1 with a starting valeu of 1
+    sem1 = sem_open(SEMAPHORE1, O_CREAT , 0777, 1); // create the semaphore1 with a starting valeu of 1
     if (sem1 < 0) {
         perror("error opening the semaphore1 from processA"); // checking errors
         logger(log_pn_processA, "e0110"); // write a log message
@@ -147,7 +148,7 @@ int main(int argc, char *argv[]) {
     else {
         logger(log_pn_processA, "0110"); // write a log message
     }
-    sem2 = sem_open(SEMAPHORE2, O_CREAT , S_IREAD | S_IWRITE, 1); // create the semaphore2 with a starting valeu of 0
+    sem2 = sem_open(SEMAPHORE2, O_CREAT , 0777, 0); // create the semaphore2 with a starting valeu of 0
     if (sem2 < 0) {
         perror("error opening the semaphore2 from processA"); // checking errors
         logger(log_pn_processA, "e0111"); // write a log message
@@ -197,25 +198,23 @@ int main(int argc, char *argv[]) {
 
         // If input is an arrow key, move circle accordingly...
         else if(cmd == KEY_LEFT || cmd == KEY_RIGHT || cmd == KEY_UP || cmd == KEY_DOWN) {
-            move_circle(cmd); // move the circle in the ncurse window
-            draw_circle(); // draw such
-
+            sleep(1);
             // obtain the cricle center in the ncurse window
             xc_w = circle.x;
             yc_w = circle.y;
             // evaluate the circle center in the shared memory
-            xc_shm = 20 * xc_w;
-            yc_shm = 20 * yc_w;
+            xc_shm = (20 * xc_w)+10;
+            yc_shm = (20 * yc_w)+10;
 
-            sem1_r = sem_wait(sem1); // get the exclusive access to the shared memory
-            if (sem1_r == -1) {
+            sem1_r = sem_trywait(sem1); // get the exclusive access to the shared memory
+            if (sem1_r == -1 && errno != EAGAIN) {
                 perror("error in the wait function on the semaphore 1 in the processA"); // checking errors
                 logger(log_pn_processA, "e1001"); // write a log message
             }
             else {
                 logger(log_pn_processA, "1001"); // write a log message
                 clear_picture_shm(shm_ptr); // clear the shared memory picture from previous circles
-                draw_circle_shm(shm_ptr, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle in the shared memory
+                draw_circle_shm(shm_ptr, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle in the shared memory  
                 logger(log_pn_processA, "1010"); // write a log message
                 sem2_r = sem_post(sem2); // notify processB that i've completed the work and he can read
                 if (sem2_r == -1) {
@@ -226,6 +225,8 @@ int main(int argc, char *argv[]) {
                     logger(log_pn_processA, "1011"); // write a log message
                 }
             }
+            move_circle(cmd); // move the circle in the ncurse window
+            draw_circle(); // draw such
         }
     }
     

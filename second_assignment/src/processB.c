@@ -79,7 +79,8 @@ int main(int argc, char const *argv[]) {
     int height = 600; // Height of the image (in pixels)
     int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
     image = bmp_create(width, height, depth); // create the image
-    off_t shm_size = sizeof(image); // obtaining the dimension of the image
+    bmp_header_t image_size = bmp_get_header(image); 
+    off_t shm_size = image_size.filesz; // obtaining the dimension of the image
     bmp_destroy(image); // destroy the no more needed image
     logger(log_pn_processB, "0001"); // write a log message
 
@@ -105,7 +106,7 @@ int main(int argc, char const *argv[]) {
     }
 
     // open the semaphores:
-    sem1 = sem_open(SEMAPHORE1, 0); // opening the semaphore1 with a starting valeu of 1
+    sem1 = sem_open(SEMAPHORE1, O_CREAT , 0777, 1); // opening the semaphore1 with a starting valeu of 1
     if (sem1 < 0) {
         perror("error opening the semaphore1 from processB"); // checking errors
         logger(log_pn_processB, "e0100"); // write a log message
@@ -113,7 +114,7 @@ int main(int argc, char const *argv[]) {
     else {
         logger(log_pn_processB, "0100"); // write a log message
     }
-    sem2 = sem_open(SEMAPHORE2, 0); // opening the semaphore2 with a starting valeu of 0
+    sem2 = sem_open(SEMAPHORE2, O_CREAT , 0777, 0); // opening the semaphore2 with a starting valeu of 0
     if (sem2 < 0) {
         perror("error opening the semaphore2 from processB"); // checking errors
         logger(log_pn_processB, "e0101"); // write a log message
@@ -124,14 +125,12 @@ int main(int argc, char const *argv[]) {
 
     // Infinite loop
     while (TRUE) {
-        logger(log_pn_processB, "a");
 
         // Get input in non-blocking mode
         int cmd = getch();
 
         // If user resizes screen, re-draw UI...
         if(cmd == KEY_RESIZE) {
-            logger(log_pn_processB, "b");
             if(first_resize) {
                 first_resize = FALSE;
             }
@@ -141,9 +140,8 @@ int main(int argc, char const *argv[]) {
         }
 
         else {
-            logger(log_pn_processB, "c");
-            sem2_r = sem_wait(sem2); // get the exclusive access to the shared memory
-            if (sem2_r == -1) {
+            sem2_r = sem_trywait(sem2); // get the exclusive access to the shared memory
+            if (sem2_r == -1 && errno != EAGAIN) {
                 perror("error in the wait function on the semaphore 2 in the processB"); // checking errors
                 logger(log_pn_processB, "e0110"); // write a log message
             }
@@ -152,9 +150,7 @@ int main(int argc, char const *argv[]) {
                 int i_max = bmp_get_width(shm_ptr); // number of row of the picture
                 int j_max = bmp_get_height(shm_ptr); // number of column of the picture
                 for (int i = 1; i <= i_max; i++) { // scanning the image first along the rows than along the columns
-                    logger(log_pn_processB, "d");
                     for (int j = 1; j <= j_max; j++) {
-                        logger(log_pn_processB, "e");
                         p_color_ptr = bmp_get_pixel(shm_ptr, i, j); // obtain the color of the pixel (i, j)
                         if (p_color.red == c_color.red && p_color.green == c_color.green && p_color.blue == c_color.blue && p_color.alpha == c_color.alpha) { // if the color is red i start to detect the circle
                             c_counter++; // increase the counter
@@ -162,15 +158,14 @@ int main(int argc, char const *argv[]) {
                         else { // i'm not detecting the circle
                             c_counter = 0; // set the counter to 0
                         }
-                        if (c_counter == 60) { // i've scanned the diameter of the circle passing through the center
-                            logger(log_pn_processB, "0111"); // write a log message
+                        if (c_counter >= 59) { // i've scanned the diameter of the circle passing through the center
                             xc_shm = i - 30; // record the x position of the center in the shared memory
                             yc_shm = j; // record the y position of the center in the shared memory
                             goto found; // exit the last for
                         }
                     }
                 }
-                found:;
+                found: logger(log_pn_processB, "0111"); // write a log message
 
                 sem1_r = sem_post(sem1); // notify processA that i've completed the work and he can read
                 if (sem1_r == -1) {
@@ -181,9 +176,12 @@ int main(int argc, char const *argv[]) {
                     logger(log_pn_processB, "1000"); // write a log message
                 }
             }
-
-            xc_w[(xc_shm / 20)-1] = 1; // evaluate the x coordinate of the center in the window and set the corresponding array cel = 1
-            yc_w[(yc_shm / 20)-1] = 1; // evaluate the y coordinate of the center in the window and set the corresponding array cel = 1
+            int row = ((xc_shm-10) / 20)-1;
+            int col = ((yc_shm-10) / 20)-1;
+            xc_w[row] = 1; // evaluate the x coordinate of the center in the window and set the corresponding array cel = 1
+            yc_w[col] = 1; // evaluate the y coordinate of the center in the window and set the corresponding array cel = 1
+            xc_w[40] = 1;
+            yc_w[15] = 1;
             for (k = 0; k <= sizeof(xc_w); k++) { // scanning the two array
                 for (w = 0; w <= sizeof(yc_w); w++) {
                     if (xc_w[k] == 1 && yc_w[w] == 1) { // if the valeu in the array is set to 1, both in the x and y coordinate
@@ -193,7 +191,6 @@ int main(int argc, char const *argv[]) {
             }
             logger(log_pn_processB, "1001"); // write a log message
             refresh();
-            sleep(1);
         }
     }
 

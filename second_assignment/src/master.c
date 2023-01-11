@@ -82,7 +82,7 @@ int main() {
 
   // spawn the processes:
   pid_t pid_procA = spawn("/usr/bin/konsole", arg_list_A);
-  sleep(1); // wait for the first process to create the shared memory and so on
+  //sleep(1); // wait for the first process to create the shared memory and so on
   pid_t pid_procB = spawn("/usr/bin/konsole", arg_list_B);
 
   if (pid_procA < 0 && pid_procB < 0) {
