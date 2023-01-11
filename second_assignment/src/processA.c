@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
     logger(log_pn_processA, "0101"); // write a log message  
 
     // create the semaphores:
-    sem1 = sem_open(SEMAPHORE1, O_CREAT , 0777, 1); // create the semaphore1 with a starting valeu of 1
+    sem1 = sem_open(SEMAPHORE1, O_CREAT , S_IWUSR | S_IRUSR, 1); // create the semaphore1 with a starting valeu of 1
     if (sem1 < 0) {
         perror("error opening the semaphore1 from processA"); // checking errors
         logger(log_pn_processA, "e0110"); // write a log message
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     else {
         logger(log_pn_processA, "0110"); // write a log message
     }
-    sem2 = sem_open(SEMAPHORE2, O_CREAT , 0777, 0); // create the semaphore2 with a starting valeu of 0
+    sem2 = sem_open(SEMAPHORE2, O_CREAT , S_IWUSR | S_IRUSR, 1); // create the semaphore2 with a starting valeu of 0
     if (sem2 < 0) {
         perror("error opening the semaphore2 from processA"); // checking errors
         logger(log_pn_processA, "e0111"); // write a log message
@@ -198,7 +198,6 @@ int main(int argc, char *argv[]) {
 
         // If input is an arrow key, move circle accordingly...
         else if(cmd == KEY_LEFT || cmd == KEY_RIGHT || cmd == KEY_UP || cmd == KEY_DOWN) {
-            sleep(1);
             // obtain the cricle center in the ncurse window
             xc_w = circle.x;
             yc_w = circle.y;
@@ -206,8 +205,8 @@ int main(int argc, char *argv[]) {
             xc_shm = (20 * xc_w)+10;
             yc_shm = (20 * yc_w)+10;
 
-            sem1_r = sem_trywait(sem1); // get the exclusive access to the shared memory
-            if (sem1_r == -1 && errno != EAGAIN) {
+            sem1_r = sem_wait(sem1); // get the exclusive access to the shared memory
+            if (sem1_r < -0.5 ) {
                 perror("error in the wait function on the semaphore 1 in the processA"); // checking errors
                 logger(log_pn_processA, "e1001"); // write a log message
             }
@@ -217,7 +216,7 @@ int main(int argc, char *argv[]) {
                 draw_circle_shm(shm_ptr, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle in the shared memory  
                 logger(log_pn_processA, "1010"); // write a log message
                 sem2_r = sem_post(sem2); // notify processB that i've completed the work and he can read
-                if (sem2_r == -1) {
+                if (sem2_r < -0.5) {
                     perror("error in the post function on the semaphore 2 in the processA"); // checking errors
                     logger(log_pn_processA, "e1011"); // write a log message
                 }

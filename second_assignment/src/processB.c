@@ -68,6 +68,8 @@ int main(int argc, char const *argv[]) {
     int k; // declare the iteration variable
     int w; // declare the iteration variable
     
+    int arr[2400];
+    
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
@@ -106,7 +108,7 @@ int main(int argc, char const *argv[]) {
     }
 
     // open the semaphores:
-    sem1 = sem_open(SEMAPHORE1, O_CREAT , 0777, 1); // opening the semaphore1 with a starting valeu of 1
+    sem1 = sem_open(SEMAPHORE1, 0); // opening the semaphore1 with a starting valeu of 1
     if (sem1 < 0) {
         perror("error opening the semaphore1 from processB"); // checking errors
         logger(log_pn_processB, "e0100"); // write a log message
@@ -114,7 +116,7 @@ int main(int argc, char const *argv[]) {
     else {
         logger(log_pn_processB, "0100"); // write a log message
     }
-    sem2 = sem_open(SEMAPHORE2, O_CREAT , 0777, 0); // opening the semaphore2 with a starting valeu of 0
+    sem2 = sem_open(SEMAPHORE2, 0); // opening the semaphore2 with a starting valeu of 0
     if (sem2 < 0) {
         perror("error opening the semaphore2 from processB"); // checking errors
         logger(log_pn_processB, "e0101"); // write a log message
@@ -122,6 +124,14 @@ int main(int argc, char const *argv[]) {
     else {
         logger(log_pn_processB, "0101"); // write a log message
     }
+
+    char arr1[5];
+    int a;
+    int b;
+    sem_getvalue(sem1, &a);
+    sem_getvalue(sem2, &b);
+    sprintf(&arr1[0], "a%ib%i", a, b);
+    logger(log_pn_processB, arr1);
 
     // Infinite loop
     while (TRUE) {
@@ -140,12 +150,20 @@ int main(int argc, char const *argv[]) {
         }
 
         else {
-            sem2_r = sem_trywait(sem2); // get the exclusive access to the shared memory
-            if (sem2_r == -1 && errno != EAGAIN) {
+            int sem2_check1;
+            int sem2_check2;
+            int sem1_check1;
+            int sem1_check2;
+            sem_getvalue(sem2, &sem2_check1);
+            sem2_r = sem_wait(sem2); // get the exclusive access to the shared memory
+            if (sem2_r < -0.5) {
                 perror("error in the wait function on the semaphore 2 in the processB"); // checking errors
                 logger(log_pn_processB, "e0110"); // write a log message
+                sem_getvalue(sem2, &sem2_check2);
+                sem_getvalue(sem1, &sem1_check1);
             }
             else {
+                sem_getvalue(sem2, &sem2_check2);
                 logger(log_pn_processB, "0110"); // write a log message
                 int i_max = bmp_get_width(shm_ptr); // number of row of the picture
                 int j_max = bmp_get_height(shm_ptr); // number of column of the picture
@@ -166,9 +184,9 @@ int main(int argc, char const *argv[]) {
                     }
                 }
                 found: logger(log_pn_processB, "0111"); // write a log message
-
+                sem_getvalue(sem1, &sem1_check1);
                 sem1_r = sem_post(sem1); // notify processA that i've completed the work and he can read
-                if (sem1_r == -1) {
+                if (sem1_r < -0.5) {
                     perror("error in the post function on the semaphore 1 in the processB"); // checking errors
                     logger(log_pn_processB, "e1000"); // write a log message
                 }
@@ -176,8 +194,15 @@ int main(int argc, char const *argv[]) {
                     logger(log_pn_processB, "1000"); // write a log message
                 }
             }
+
+            sem_getvalue(sem1, &sem1_check2);
             int row = ((xc_shm-10) / 20)-1;
             int col = ((yc_shm-10) / 20)-1;
+            char arr[13];
+            sprintf(&arr[0], "21%i22%i11%i12%i", sem2_check1, sem2_check2, sem1_check1, sem1_check2);
+            logger(log_pn_processB, arr); // write a log message
+            mvaddch(10, 10, '+'); // print a plus in the window
+
             xc_w[row] = 1; // evaluate the x coordinate of the center in the window and set the corresponding array cel = 1
             yc_w[col] = 1; // evaluate the y coordinate of the center in the window and set the corresponding array cel = 1
             xc_w[40] = 1;
@@ -186,11 +211,13 @@ int main(int argc, char const *argv[]) {
                 for (w = 0; w <= sizeof(yc_w); w++) {
                     if (xc_w[k] == 1 && yc_w[w] == 1) { // if the valeu in the array is set to 1, both in the x and y coordinate
                         mvaddch(k+1, w+1, '+'); // print a plus in the window
+                        //mvaddch(10, 10, '+'); // print a plus in the window
                     }
                 }
             }
             logger(log_pn_processB, "1001"); // write a log message
             refresh();
+            sleep(1);
         }
     }
 
