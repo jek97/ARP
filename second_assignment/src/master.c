@@ -8,6 +8,8 @@
 #include <string.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <errno.h>
+#include <signal.h>
 
 
 int spawn(const char * program, char * arg_list[]) {
@@ -54,20 +56,47 @@ int logger(const char * log_pathname, char log_msg[]) {
   return 1;
 }
 
+int mkpipe(const char *pathname, mode_t mode) { // function to create a named pipe
+  int pipe; // declare the returned valeu of the mkfifo funtion
+  int rm_pipe; // declare the returned valeu of the removing function
+  remove(pathname); // remove any previous pipe with the same name
+  pipe = mkfifo(pathname,mode); // actually create the pipe
+  if(pipe < 0) { // checking possible errors
+    perror("error while creating the named pipe");
+    return -1;
+  }
+  else {
+    return 1;
+  }
+}
+
 int main() {
   // directory variables:
   const char * log_dir = "./bin/log_files"; // initialize the pathname of the log directory
   mode_t log_dir_mode = 0777; // initialize the log directory mode
+  const char * named_pipes_dir = "./bin/named_pipes"; // initialize the pathname of the log directory
+  mode_t named_pipes_dir_mode = 0777; // initialize the log directory mode
 
   // logger variable:
   const char * log_pn_master = "./bin/log_files/master.txt"; // initialize the log file path name
-
+  
+  // spawning processes variables
   char * arg_list_A[] = { "/usr/bin/konsole", "-e", "./bin/processA", NULL };
   char * arg_list_B[] = { "/usr/bin/konsole", "-e", "./bin/processB", NULL };
 
-  logger(log_pn_master, "log legend: 0001= opened/created the log files folder   0010= spawned the processes   0011= processes have been closed   the log number with an e in front means the relative operation failed"); // write a log message
+  // pipes variable:
+  int s_mass_r; // inizialize the returned valeu from mkpipe
+  const char *s_mass = "./bin/named_pipes/s"; // pathname of the pipe from inspect to master through s
+  mode_t s_mass_mode = 0777; // mode of the pipe from inspect to master through s
+  int fd_s; // declare the file descriptor for the pipe s
+  int s_rcv[1]; // declare the array where i will store the signal id
+  int * s_rcv_p = &s_rcv[0]; // initialize the pointer to the s_rcv array
+  ssize_t r_fd_s; // declare the returned valeu of the read function on the signal pipe
+  int k; // declaring the returned valeu of the kill function that close processB
+
+  logger(log_pn_master, "log legend: 0001= opened/created the log files folder   0010= spawned the processes   0011= processes have been closed   0100= opened/created the named pipes folder   0101= creating the pipe s   0110= opening the s pipe   0111= readed the pipe s   the log number with an e in front means the relative operation failed"); // write a log message
   
-  // create the directories for the log files:
+  // create the directories for the log files and the named pipes:
   if(opendir(log_dir) == NULL) { // try to open the directory to check if it exists
     if (mkdir(log_dir, log_dir_mode) < 0) { // create the directory
       perror("error creating the log_file directory from master"); // checking errors
@@ -75,6 +104,16 @@ int main() {
     }
     else {
       logger(log_pn_master, "0001"); // write a log message
+    }
+  }
+
+  if(opendir(named_pipes_dir) == NULL) { // try to open the directory to check if it exists
+    if (mkdir(named_pipes_dir, named_pipes_dir_mode) < 0) { // create the directory
+      perror("error creating the named_pipes directory from master"); // checking errors
+      logger(log_pn_master, "e0100"); // write a log message
+    }
+    else {
+      logger(log_pn_master, "0100"); // write a log message
     }
   }
 
@@ -90,6 +129,40 @@ int main() {
   }
   else {
     logger(log_pn_master, "0010"); // write a log message
+  }
+
+  // create the pipe:
+  s_mass_r = mkpipe(s_mass, s_mass_mode); // creating the named pipe for communicate the signal id from the processA to the master
+  if (s_mass_r < 0) {
+    perror("error creating the pipe s from master"); // checking errors
+    logger(log_pn_master, "e0101"); // write a log message
+  }
+  else {
+    logger(log_pn_master, "0101"); // write a log message
+  }
+
+  // opening the signal pipe
+  fd_s = open(s_mass, O_RDONLY | O_NONBLOCK); // open the pipe s to read on it
+  if( fd_s < 0){
+      perror("error opening the pipe s from master"); // checking errors
+      logger(log_pn_master, "e0110"); // write a error log message
+  }
+  else {
+    logger(log_pn_master, "0110"); // write a log message
+  }
+
+  while(1) {
+    r_fd_s = read(fd_s, s_rcv_p, 1);
+    if(r_fd_s < 0 && errno != EAGAIN) { 
+      perror("error reading the pipe s from master"); // checking errors
+      logger(log_pn_master, "e0111"); // write a error log message
+    }
+    else if (r_fd_s > 0){ // otherwise read the signal id
+      logger(log_pn_master, "0111"); // write log message
+      if (s_rcv[0] == 1) { // the inspect is asking to close the processes
+        k = kill(pid_procB, SIGTERM); // send the signals
+      }
+    }
   }
   int status;
   waitpid(pid_procA, &status, 0);

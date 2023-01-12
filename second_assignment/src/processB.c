@@ -10,9 +10,23 @@
 #include <semaphore.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
+#include <sys/mman.h>
 
 #define SEMAPHORE1 "/semaphore1"
 #define SEMAPHORE2 "/semaphore2"
+
+// declaring some variables for the shared memory:
+const char * shm = "/shm"; // initialize the pathname of the shared memory
+int shm_fd; // declare the file descriptor of the shared memory
+void * shm_ptr; // declare the pointer to the shared memory
+off_t shm_size; // dimension of the shared memory
+
+// declaring some variables for the semphores:
+sem_t * sem1; // declaring the semaphore 1 adress
+int sem1_r; // declare the returned valeu of the wait function on semaphore 1
+sem_t * sem2; // declaring the semaphore 2 adress
+int sem2_r; // declare the returned valeu of the post function on semaphore 2
 
 int logger(const char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
@@ -38,23 +52,36 @@ int logger(const char * log_pathname, char log_msg[]) {
   return 1;
 }
 
+void sig_handler (int signo) {
+    if (signo == SIGTERM) { // closure signal received
+        if (munmap(shm_ptr, shm_size) < 0) { // unmap the shared memory
+        perror("error unmapping the shared memory in processB"); // checking errors
+        }
+        if (shm_unlink(shm) < 0) { // unlink the shared memory
+        perror("error unlinking the shared memory in processB"); // checking errors
+        }
+        if (sem_close(sem1) < 0) { // close the semaphore1
+        perror("error closing the semaphore1 in processB"); // checking errors
+        }
+        if (sem_unlink(SEMAPHORE1) < 0) { // destroing the semaphore1
+        perror("error unlinking the semaphore1 in processB"); // checking errors
+        }
+        if (sem_close(sem2) < 0) { // close the semaphore1
+        perror("error closing the semaphore2 in processB"); // checking errors
+        }
+        if (sem_unlink(SEMAPHORE2) < 0) { // destroing the semaphore1
+        perror("error unlinking the semaphore2 in processB"); // checking errors
+        }
+        if (raise(SIGKILL) != 0) { // proces commit suicide
+            perror("error suiciding the processB"); // checking errors
+        }
+    }
+}
+
 int main(int argc, char const *argv[]) {
     // logger variable
     const char * log_pn_processB = "./bin/log_files/processB.txt"; // initialize the log file path name
     remove(log_pn_processB); // remove the old log file
-
-    // declaring some variables for the shared memory:
-    const char * shm = "/shm"; // initialize the pathname of the shared memory
-    int shm_fd; // declare the file descriptor of the shared memory
-    void * shm_ptr; // declare the pointer to the shared memory
-
-    // declaring some variables for the semphores:
-    sem_t * sem1; // declaring the semaphore 1 adress
-    //const char * semaphore1 = "/semaphore1"; // initialize the pathname of the semaphore1
-    int sem1_r; // declare the returned valeu of the wait function on semaphore 1
-    sem_t * sem2; // declaring the semaphore 2 adress
-    //const char * semaphore2 = "/semaphore2"; // initialize the pathname of the semaphore2
-    int sem2_r; // declare the returned valeu of the post function on semaphore 2
 
     // declare some internal variable:
     rgb_pixel_t p_color; // declare the variable with the color of the current pixel
@@ -73,8 +100,17 @@ int main(int argc, char const *argv[]) {
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
-    logger(log_pn_processB, "log legend: 0001= created a blanck picture for the size   0010= opened the shared memory   0011= mapped the shared memory   0100= opened the semaphore1   0101= opened the semaphore 2   0110= decremented the semaphore2   0111= found the circle center   1000= incremented the semaphore 1   1001= printed the window"); // write a log message
+    logger(log_pn_processB, "log legend: 0001= created a blanck picture for the size   0010= opened the shared memory   0011= mapped the shared memory   0100= opened the semaphore1   0101= opened the semaphore 2   0110= decremented the semaphore2   0111= found the circle center   1000= incremented the semaphore 1   1001= printed the window   1010= signal received to close the process"); // write a log message
     
+    // signal menagement to close the processes
+    if (signal(SIGTERM, sig_handler) == SIG_ERR) { // check if there is any closure signal
+        perror("error receiving the closure signal from the processA in processB"); // checking errors
+        logger(log_pn_processB, "e1010"); // write a error log message
+    }
+    else {
+        logger(log_pn_processB, "1010"); // write a error log message
+    }
+
     // create a blanck picture for its dimension used to initialize the shared memory:
     bmpfile_t *image; // Data structure for storing the bitmap file
     int width = 1600; // width of the image (in pixels)
@@ -82,7 +118,7 @@ int main(int argc, char const *argv[]) {
     int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
     image = bmp_create(width, height, depth); // create the image
     bmp_header_t image_size = bmp_get_header(image); 
-    off_t shm_size = image_size.filesz; // obtaining the dimension of the image
+    shm_size = image_size.filesz; // obtaining the dimension of the image
     bmp_destroy(image); // destroy the no more needed image
     logger(log_pn_processB, "0001"); // write a log message
 
@@ -90,7 +126,7 @@ int main(int argc, char const *argv[]) {
     init_console_ui();
 
     // open the shared memory:
-    shm_fd = shm_open(shm, O_RDONLY, 0777); // opening for read the shared memory
+    shm_fd = shm_open(shm, O_RDONLY | O_CREAT, 0777); // opening for read the shared memory
     if (shm_fd < 0) {
         perror("error opening the shared memory from processB"); // checking errors
         logger(log_pn_processB, "e0010"); // write a log message
@@ -165,6 +201,7 @@ int main(int argc, char const *argv[]) {
             else {
                 sem_getvalue(sem2, &sem2_check2);
                 logger(log_pn_processB, "0110"); // write a log message
+                mvaddch(10, 10, '+'); // print a plus in the window
                 int i_max = bmp_get_width(shm_ptr); // number of row of the picture
                 int j_max = bmp_get_height(shm_ptr); // number of column of the picture
                 for (int i = 1; i <= i_max; i++) { // scanning the image first along the rows than along the columns
@@ -201,7 +238,6 @@ int main(int argc, char const *argv[]) {
             char arr[13];
             sprintf(&arr[0], "21%i22%i11%i12%i", sem2_check1, sem2_check2, sem1_check1, sem1_check2);
             logger(log_pn_processB, arr); // write a log message
-            mvaddch(10, 10, '+'); // print a plus in the window
 
             xc_w[row] = 1; // evaluate the x coordinate of the center in the window and set the corresponding array cel = 1
             yc_w[col] = 1; // evaluate the y coordinate of the center in the window and set the corresponding array cel = 1

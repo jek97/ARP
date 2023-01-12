@@ -10,6 +10,8 @@
 #include <semaphore.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
+#include <sys/mman.h>
 
 #define SEMAPHORE1 "/semaphore1"
 #define SEMAPHORE2 "/semaphore2"
@@ -85,7 +87,10 @@ int main(int argc, char *argv[]) {
     int sem2_r; // declare the returned valeu of the post function on semaphore 2
     
     // declare some variable to save the shared memory status:
-    const char * shm_snapshot = "./out/snapshot.bmp";
+    const char * shm_snapshot = "./out/snapshot.bmp"; // pathname of the pipe s
+    int w_s_out; // returned valeu of the write function on the pipe s
+    int s_snd[] = {1}; // declare the s signal sending buffer
+    int * s_snd_p = &s_snd[0]; // initialize the pointer to the s_snd array
     
     // declare some internal variable:
     int xc_w; // declare the x coordinate of the center of the circle in the ncurse window
@@ -95,7 +100,21 @@ int main(int argc, char *argv[]) {
     int rc_shm = 30; // initialize the radius of the circle in the shared memory
     rgb_pixel_t c_color = {0, 0, 255, 255}; // initialize the circle color (BRGA) to red
 
-    logger(log_pn_processA, "log legend: 0001= created the blanck picture for the size   0010= opened the shared memory   0011= truncated the shared memory   0100= mapped the shared memory   0101= fullfilled the shared memory with an initial image   0110= opened the semaphore 1   0111= opened the semaphore 2   1000= saved a snapshot of the shared memory   1001= decremented the semaphore1   1010= drawed the new circle   1011= incremented the semaphore 2   the log number with an e in front means the relative operation failed"); // write a log message
+    // declare some variable for the pipe between processA and the master
+    int s_out; // declare the file descriptor of the pipe s
+    const char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
+
+    logger(log_pn_processA, "log legend: 0001= created the blanck picture for the size   0010= opened the shared memory   0011= truncated the shared memory   0100= mapped the shared memory   0101= fullfilled the shared memory with an initial image   0110= opened the semaphore 1   0111= opened the semaphore 2   1000= saved a snapshot of the shared memory   1001= decremented the semaphore1   1010= drawed the new circle   1011= incremented the semaphore 2   1100= opened the s named pipe   1101= written the signal id on the pipe s   the log number with an e in front means the relative operation failed"); // write a log message
+
+    // open the pipe:
+    s_out = open(s, O_WRONLY); // open the pipe s to write on it
+    if(s_out < 0){
+        perror("error opening the pipe s from processA"); // checking errors
+        logger(log_pn_processA, "e1100"); // write a log message
+    }
+    else {
+        logger(log_pn_processA, "1100"); // write a log message
+    }
 
     // create a blanck picture for its dimension used to initialize the shared memory:
     bmpfile_t *image; // Data structure for storing the bitmap file
@@ -167,6 +186,7 @@ int main(int argc, char *argv[]) {
 
     // Infinite loop
     while (TRUE) {
+        mvprintw(LINES - 1, 1, "Press esc to exit");
         // Get input in non-blocking mode
         int cmd = getch();
 
@@ -177,6 +197,40 @@ int main(int argc, char *argv[]) {
             }
             else {
                 reset_console_ui();
+            }
+        }
+
+        else if (cmd == KEY_END) {
+            mvprintw(LINES - 1, 1, "closing processes");
+            w_s_out = write(s_out, s_snd_p, 1); // writing the signal id on the pipe
+            if(w_s_out <= 0) { 
+                perror("error tring to write on the s pipe from porcessA"); // checking errors
+                logger(log_pn_processA, "e1101"); // write a error log message
+            }
+            else {
+                logger(log_pn_processA, "1101"); // write a error log message
+            }
+
+            if (munmap(shm_ptr, shm_size) < 0) { // unmap the shared memory
+            perror("error unmapping the shared memory in processA"); // checking errors
+            }
+            if (shm_unlink(shm) < 0) { // unlink the shared memory
+            perror("error unlinking the shared memory in processA"); // checking errors
+            }
+            if (sem_close(sem1) < 0) { // close the semaphore1
+            perror("error closing the semaphore1 in processA"); // checking errors
+            }
+            if (sem_unlink(SEMAPHORE1) < 0) { // destroing the semaphore1
+            perror("error unlinking the semaphore1 in processA"); // checking errors
+            }
+            if (sem_close(sem2) < 0) { // close the semaphore1
+            perror("error closing the semaphore2 in processA"); // checking errors
+            }
+            if (sem_unlink(SEMAPHORE2) < 0) { // destroing the semaphore1
+            perror("error unlinking the semaphore2 in processA"); // checking errors
+            }
+            if (raise(SIGKILL) != 0) { // proces commit suicide
+                perror("error suiciding the processA"); // checking errors
             }
         }
 
