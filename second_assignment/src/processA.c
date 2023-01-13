@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     const char * shm = "/shm"; // initialize the pathname of the shared memory
     int shm_fd; // declare the file descriptor of the shared memory
     int ft; // declare the returned valeu of the function ftruncate
-    void * shm_ptr; // declare the pointer to the shared memory
+    bmpfile_t * shm_ptr; // declare the pointer to the shared memory
 
     // declaring some variables for the semphores:
     sem_t * sem1; // declaring the semaphore 1 adress
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     int sem2_r; // declare the returned valeu of the post function on semaphore 2
     
     // declare some variable to save the shared memory status:
-    const char * shm_snapshot = "./out/snapshot.bmp"; // pathname of the pipe s
+    const char * shm_snapshot = "./out/snapshot.bmp"; // pathname of where to save the snapshot
     int w_s_out; // returned valeu of the write function on the pipe s
     int s_snd[] = {1}; // declare the s signal sending buffer
     int * s_snd_p = &s_snd[0]; // initialize the pointer to the s_snd array
@@ -123,12 +123,12 @@ int main(int argc, char *argv[]) {
     int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
     image = bmp_create(width, height, depth); // create the image
     bmp_header_t image_size = bmp_get_header(image);
-    off_t shm_size = image_size.filesz; // obtaining the dimension of the image
+    size_t shm_size = image_size.filesz; // obtaining the dimension of the image
     bmp_destroy(image); // destroy the no more needed image
     logger(log_pn_processA, "0001"); // write a log message
 
     // create the shared memory:
-    shm_fd = shm_open(shm, O_RDWR | O_CREAT, 0777); // opening/creating the shared memory
+    shm_fd = shm_open(shm, O_RDWR | O_CREAT, 0666); // opening/creating the shared memory
     if (shm_fd < 0) {
         perror("error opening the shared memory from processA"); // checking errors
         logger(log_pn_processA, "e0010"); // write a log message
@@ -151,12 +151,12 @@ int main(int argc, char *argv[]) {
                 logger(log_pn_processA, "0100"); // write a log message
             }
         }
-    }    
+    }
     
     // fulfill the memory with the blanck image:
     shm_ptr = bmp_create(width, height, depth); // create the image
     clear_picture_shm(shm_ptr); // color the pcture in white
-    logger(log_pn_processA, "0101"); // write a log message  
+    logger(log_pn_processA, "0101"); // write a log message
 
     // create the semaphores:
     sem1 = sem_open(SEMAPHORE1, O_CREAT , S_IWUSR | S_IRUSR, 1); // create the semaphore1 with a starting valeu of 1
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
 
     // Infinite loop
     while (TRUE) {
-        mvprintw(LINES - 1, 1, "Press esc to exit");
+        mvprintw(LINES - 1, 1, "Press end to exit");
         // Get input in non-blocking mode
         int cmd = getch();
 

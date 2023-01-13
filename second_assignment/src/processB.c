@@ -19,8 +19,8 @@
 // declaring some variables for the shared memory:
 const char * shm = "/shm"; // initialize the pathname of the shared memory
 int shm_fd; // declare the file descriptor of the shared memory
-void * shm_ptr; // declare the pointer to the shared memory
-off_t shm_size; // dimension of the shared memory
+bmpfile_t * shm_ptr; // declare the pointer to the shared memory
+size_t shm_size; // dimension of the shared memory
 
 // declaring some variables for the semphores:
 sem_t * sem1; // declaring the semaphore 1 adress
@@ -96,6 +96,7 @@ int main(int argc, char const *argv[]) {
     int w; // declare the iteration variable
     
     int arr[2400];
+    const char * shm_snapshot = "./src/snapshot.bmp"; // pathname of the pipe s
     
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
@@ -126,7 +127,7 @@ int main(int argc, char const *argv[]) {
     init_console_ui();
 
     // open the shared memory:
-    shm_fd = shm_open(shm, O_RDONLY | O_CREAT, 0777); // opening for read the shared memory
+    shm_fd = shm_open(shm, O_RDONLY | O_CREAT, 0666); // opening for read the shared memory
     if (shm_fd < 0) {
         perror("error opening the shared memory from processB"); // checking errors
         logger(log_pn_processB, "e0010"); // write a log message
@@ -134,7 +135,7 @@ int main(int argc, char const *argv[]) {
     else {
         logger(log_pn_processB, "0010"); // write a log message
         shm_ptr = mmap(NULL, shm_size, PROT_READ, MAP_SHARED, shm_fd, 0); // map the shared memory
-        if (shm_ptr == (void *) -1) {
+        if (shm_ptr == MAP_FAILED) {
             perror("error mapping the shared memory from processB"); // checking errors
             logger(log_pn_processB, "e0011"); // write a log message
         }
@@ -142,6 +143,12 @@ int main(int argc, char const *argv[]) {
             logger(log_pn_processB, "0011"); // write a log message
         }
     }
+
+    bmp_header_t al = bmp_get_header(shm_ptr);
+    int a = al.filesz;
+    char arr2[5];
+    sprintf(&arr2[0], "shm%i", a);
+    logger(log_pn_processB, arr2);
 
     // open the semaphores:
     sem1 = sem_open(SEMAPHORE1, 0); // opening the semaphore1 with a starting valeu of 1
@@ -160,14 +167,7 @@ int main(int argc, char const *argv[]) {
     else {
         logger(log_pn_processB, "0101"); // write a log message
     }
-
-    char arr1[5];
-    int a;
-    int b;
-    sem_getvalue(sem1, &a);
-    sem_getvalue(sem2, &b);
-    sprintf(&arr1[0], "a%ib%i", a, b);
-    logger(log_pn_processB, arr1);
+    sleep(0.5);
 
     // Infinite loop
     while (TRUE) {
@@ -190,7 +190,7 @@ int main(int argc, char const *argv[]) {
             int sem2_check2;
             int sem1_check1;
             int sem1_check2;
-            sem_getvalue(sem2, &sem2_check1);
+            //sem_getvalue(sem2, &sem2_check1);
             sem2_r = sem_wait(sem2); // get the exclusive access to the shared memory
             if (sem2_r < -0.5) {
                 perror("error in the wait function on the semaphore 2 in the processB"); // checking errors
@@ -204,6 +204,13 @@ int main(int argc, char const *argv[]) {
                 mvaddch(10, 10, '+'); // print a plus in the window
                 int i_max = bmp_get_width(shm_ptr); // number of row of the picture
                 int j_max = bmp_get_height(shm_ptr); // number of column of the picture
+
+                int a = i_max;
+                int b = j_max;
+                char arr2[5];
+                sprintf(&arr2[0], "i%ij%i", a, b);
+                logger(log_pn_processB, arr2);
+
                 for (int i = 1; i <= i_max; i++) { // scanning the image first along the rows than along the columns
                     for (int j = 1; j <= j_max; j++) {
                         p_color_ptr = bmp_get_pixel(shm_ptr, i, j); // obtain the color of the pixel (i, j)
