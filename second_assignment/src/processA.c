@@ -57,6 +57,7 @@ void write_shm(bmpfile_t *bmp, int * shm_ptr) {
             }
         }
     }
+    pos = 0;
 }
 
 int logger(const char * log_pathname, char log_msg[]) {
@@ -140,7 +141,13 @@ int main(int argc, char *argv[]) {
     int height = 600; // Height of the image (in pixels)
     int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
     image = bmp_create(width, height, depth); // create the image
-    shm_size = width * height; // set the shared memory dimension
+    shm_size = width; // set the shared memory dimension
+    int pos = 0; // declaring the position in the array
+    int i = 1;
+    int i_max = width; // initialize the number of row of the picture
+    int j;
+    int j_max = height; // initialize the number of column of the picture
+    rgb_pixel_t *p; // declaring the pixel variable
     logger(log_pn_processA, "0001"); // write a log message
 
     // create the shared memory:
@@ -287,31 +294,40 @@ int main(int argc, char *argv[]) {
             xc_shm = (20 * xc_w)+10;
             yc_shm = (20 * yc_w)+10;
 
-            sem1_r = sem_wait(sem1); // get the exclusive access to the shared memory
-            if (sem1_r < 0) {
-                perror("error in the wait function on the semaphore 1 in the processA"); // checking errors
-                logger(log_pn_processA, "e1001"); // write a log message
-            }
-            else {
-                logger(log_pn_processA, "1001"); // write a log message
-                clear_picture_shm(image); // clear the shared memory picture from previous circles
-                draw_circle_shm(image, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle
-                logger(log_pn_processA, "bl"); // write a log message
-                write_shm(image, shm_ptr); // paste the results in the shared memory
-                
-                /*for (int i = 0; i <= 4; i++) {
-                    shm_ptr[i] = i;
-                }*/
+            clear_picture_shm(image); // clear the shared memory picture from previous circles
+            draw_circle_shm(image, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle
 
-                logger(log_pn_processA, "1010"); // write a log message
-                sem2_r = sem_post(sem2); // notify processB that i've completed the work and he can read
-                if (sem2_r < 0) {
-                    perror("error in the post function on the semaphore 2 in the processA"); // checking errors
-                    logger(log_pn_processA, "e1011"); // write a log message
+            for (j = 1; j <= j_max; j++) {
+                sem1_r = sem_wait(sem1); // get the exclusive access to the shared memory
+                if (sem1_r < 0) {
+                    perror("error in the wait function on the semaphore 1 in the processA"); // checking errors
+                    logger(log_pn_processA, "e1001"); // write a log message
                 }
                 else {
-                    logger(log_pn_processA, "1011"); // write a log message
-                }
+                    logger(log_pn_processA, "1001"); // write a log message
+                    
+                    for (i = 1; i <= i_max; i++) {
+                        p = bmp_get_pixel(image, i, j);
+                        pos = i + (j * i_max) - 1;
+                        if (p->red == 255 && p->blue == 0 && p->green == 0) {
+                            shm_ptr[pos] = 1;
+                        }
+                        else {
+                            shm_ptr[pos] = 0;
+                        }
+                    }
+                
+                    logger(log_pn_processA, "1010"); // write a log message
+                    sem2_r = sem_post(sem2); // notify processB that i've completed the work and he can read
+                    if (sem2_r < 0) {
+                        perror("error in the post function on the semaphore 2 in the processA"); // checking errors
+                        logger(log_pn_processA, "e1011"); // write a log message
+                    }
+                    else {
+                        logger(log_pn_processA, "1011"); // write a log message
+                    }
+            }
+            
             }
             move_circle(cmd); // move the circle in the ncurse window
             draw_circle(); // draw such
