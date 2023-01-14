@@ -16,7 +16,7 @@
 #define SEMAPHORE1 "/semaphore1"
 #define SEMAPHORE2 "/semaphore2"
 
-int clear_picture_shm(bmpfile_t *bmp) { // function to clear a picture (all the picture white)
+void clear_picture_shm(bmpfile_t *bmp) { // function to clear a picture (all the picture white)
     rgb_pixel_t color = {255, 255, 255, 255}; // define the color white
     int i_max = bmp_get_width(bmp); // number of row of the picture
     int j_max = bmp_get_height(bmp); // number of column of the picture
@@ -25,12 +25,11 @@ int clear_picture_shm(bmpfile_t *bmp) { // function to clear a picture (all the 
             bmp_set_pixel(bmp, i, j, color); // color the pixels of white color
         }
     }
-    return 1;
 }
 
-int draw_circle_shm(bmpfile_t *bmp, int xc, int yc, int r, rgb_pixel_t color) { // function to draw a circle in the picture
-    int i_max = bmp_get_width(bmp); // number of row of the picture
-    int j_max = bmp_get_height(bmp); // number of column of the picture
+void draw_circle_shm(bmpfile_t *bmp, int xc, int yc, int r, rgb_pixel_t color) { // function to draw a circle in the picture
+    int i_max = bmp_get_width(bmp); // initialize the number of row of the picture
+    int j_max = bmp_get_height(bmp); // initialize the number of column of the picture
     for (int i = 1; i <= i_max; i++) { // for all the image points
         for (int j = 1; j <= j_max; j++) {
             float d = sqrt(((i-xc)*(i-xc))+((j-yc)*(j-yc))); // compute the distance from the circle center
@@ -39,7 +38,25 @@ int draw_circle_shm(bmpfile_t *bmp, int xc, int yc, int r, rgb_pixel_t color) { 
             }
         }
     }
-    return 1;
+}
+
+void write_shm(bmpfile_t *bmp, int * shm_ptr) {
+    int pos = 0; // declaring the position in the array
+    int i_max = bmp_get_width(bmp); // initialize the number of row of the picture
+    int j_max = bmp_get_height(bmp); // initialize the number of column of the picture
+    rgb_pixel_t *p; // declaring the pixel variable
+    for (int i = 1; i <= i_max; i++) { // for all the image points
+        for (int j = 1; j <= j_max; j++) {
+            p = bmp_get_pixel(bmp, i, j);
+            pos = i + ((j - 1) * i_max) -1;
+            if (p->red == 255 && p->blue == 0 && p->green == 0) {
+                shm_ptr[pos] = 1;
+            }
+            else {
+                shm_ptr[pos] = 0;
+            }
+        }
+    }
 }
 
 int logger(const char * log_pathname, char log_msg[]) {
@@ -76,7 +93,8 @@ int main(int argc, char *argv[]) {
     const char * shm = "/shm"; // initialize the pathname of the shared memory
     int shm_fd; // declare the file descriptor of the shared memory
     int ft; // declare the returned valeu of the function ftruncate
-    bmpfile_t * shm_ptr; // declare the pointer to the shared memory
+    int * shm_ptr; // declare the pointer to the shared memory
+    int shm_size;
 
     // declaring some variables for the semphores:
     sem_t * sem1; // declaring the semaphore 1 adress
@@ -104,7 +122,7 @@ int main(int argc, char *argv[]) {
     int s_out; // declare the file descriptor of the pipe s
     const char *s = "./bin/named_pipes/s"; // initialize the the pipe s pathname
 
-    logger(log_pn_processA, "log legend: 0001= created the blanck picture for the size   0010= opened the shared memory   0011= truncated the shared memory   0100= mapped the shared memory   0101= fullfilled the shared memory with an initial image   0110= opened the semaphore 1   0111= opened the semaphore 2   1000= saved a snapshot of the shared memory   1001= decremented the semaphore1   1010= drawed the new circle   1011= incremented the semaphore 2   1100= opened the s named pipe   1101= written the signal id on the pipe s   the log number with an e in front means the relative operation failed"); // write a log message
+    logger(log_pn_processA, "log legend: 0001= created the blanck picture for the size   0010= opened the shared memory   0011= truncated the shared memory   0100= mapped the shared memory   0101= fullfilled the shared memory with an initial image   0110= opened the semaphore 1   0111= opened the semaphore 2   1000= saved a snapshot of the shared memory   1001= decremented the semaphore1   1010= drawed the new circle   1011= incremented the semaphore 2   1100= opened the s named pipe   1101= written the signal id on the pipe s   1110= initialized semaphore1   1111= initialized sempahore2   the log number with an e in front means the relative operation failed"); // write a log message
 
     // open the pipe:
     s_out = open(s, O_WRONLY); // open the pipe s to write on it
@@ -122,9 +140,7 @@ int main(int argc, char *argv[]) {
     int height = 600; // Height of the image (in pixels)
     int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
     image = bmp_create(width, height, depth); // create the image
-    bmp_header_t image_size = bmp_get_header(image);
-    size_t shm_size = image_size.filesz; // obtaining the dimension of the image
-    bmp_destroy(image); // destroy the no more needed image
+    shm_size = width * height; // set the shared memory dimension
     logger(log_pn_processA, "0001"); // write a log message
 
     // create the shared memory:
@@ -142,8 +158,8 @@ int main(int argc, char *argv[]) {
         }
         else {
             logger(log_pn_processA, "0011"); // write a log message
-            shm_ptr = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // map the shared memory
-            if (shm_ptr == (void *) -1) {
+            shm_ptr = (int *) mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // map the shared memory
+            if (shm_ptr == MAP_FAILED) {
                 perror("error mapping the shared memory from processA"); // checking errors
                 logger(log_pn_processA, "e0100"); // write a log message
             }
@@ -153,9 +169,8 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    // fulfill the memory with the blanck image:
-    shm_ptr = bmp_create(width, height, depth); // create the image
-    clear_picture_shm(shm_ptr); // color the pcture in white
+    // paint the initial image:
+    clear_picture_shm(image); // color the pcture in white
     logger(log_pn_processA, "0101"); // write a log message
 
     // create the semaphores:
@@ -176,8 +191,21 @@ int main(int argc, char *argv[]) {
         logger(log_pn_processA, "0111"); // write a log message
     }
 
-    sem_init(sem1, 1, 1);
-    sem_init(sem2, 1, 0);
+    if (sem_init(sem1, 1, 1) < 0) {
+        perror("error initializing the semaphore1 in processA");
+        logger(log_pn_processA, "e1110"); // write a log message
+    }
+    else {
+        logger(log_pn_processA, "1110"); // write a log message
+    }
+    if (sem_init(sem2, 1, 0) < 0) {
+        perror("error initializing the semaphore2 in processA");
+        logger(log_pn_processA, "e1111"); // write a log message
+    }
+    else {
+        logger(log_pn_processA, "1111"); // write a log message
+    }
+    
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
@@ -240,7 +268,7 @@ int main(int argc, char *argv[]) {
                 if(check_button_pressed(print_btn, &event)) {
                     mvprintw(LINES - 1, 1, "Print button pressed");
                     refresh();
-                    bmp_save(shm_ptr, shm_snapshot);
+                    bmp_save(image, shm_snapshot);
                     logger(log_pn_processA, "1000"); // write a log message
                     sleep(1);
                     for(int j = 0; j < COLS - BTN_SIZE_X - 2; j++) {
@@ -260,17 +288,24 @@ int main(int argc, char *argv[]) {
             yc_shm = (20 * yc_w)+10;
 
             sem1_r = sem_wait(sem1); // get the exclusive access to the shared memory
-            if (sem1_r < -0.5 ) {
+            if (sem1_r < 0) {
                 perror("error in the wait function on the semaphore 1 in the processA"); // checking errors
                 logger(log_pn_processA, "e1001"); // write a log message
             }
             else {
                 logger(log_pn_processA, "1001"); // write a log message
-                clear_picture_shm(shm_ptr); // clear the shared memory picture from previous circles
-                draw_circle_shm(shm_ptr, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle in the shared memory  
+                clear_picture_shm(image); // clear the shared memory picture from previous circles
+                draw_circle_shm(image, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle
+                logger(log_pn_processA, "bl"); // write a log message
+                write_shm(image, shm_ptr); // paste the results in the shared memory
+                
+                /*for (int i = 0; i <= 4; i++) {
+                    shm_ptr[i] = i;
+                }*/
+
                 logger(log_pn_processA, "1010"); // write a log message
                 sem2_r = sem_post(sem2); // notify processB that i've completed the work and he can read
-                if (sem2_r < -0.5) {
+                if (sem2_r < 0) {
                     perror("error in the post function on the semaphore 2 in the processA"); // checking errors
                     logger(log_pn_processA, "e1011"); // write a log message
                 }
