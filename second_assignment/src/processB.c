@@ -20,7 +20,7 @@
 const char * shm = "/shm"; // initialize the pathname of the shared memory
 int shm_fd; // declare the file descriptor of the shared memory
 int * shm_ptr; // declare the pointer to the shared memory
-size_t shm_size = 1600; // dimension of the shared memory
+size_t shm_size = 6400; // dimension of the shared memory
 
 // declaring some variables for the semphores:
 sem_t * sem1; // declaring the semaphore 1 adress
@@ -81,52 +81,33 @@ void sig_handler (int signo) {
 int main(int argc, char const *argv[]) {
     // logger variable
     const char * log_pn_processB = "./bin/log_files/processB.txt"; // initialize the log file path name
-    remove(log_pn_processB); // remove the old log file
-
-    bmpfile_t *image; // Data structure for storing the bitmap file
+    
+    // declare some internal variable:
     int width = 1600; // width of the image (in pixels)
     int height = 600; // Height of the image (in pixels)
-    int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
-    image = bmp_create(width, height, depth); // create the image
-    shm_size = 6400; // set the shared memory dimension
-
-    // declare some internal variable:
     int image_arr[width][height]; // initialize the vector that will hold the image
     int c_counter = 0; // intialize the counter used to find the circle center 
     int xc; // declare the position of the center of the circle along x
     int yc; // declare the position of the center of the circle along y
-    int history[80][30] = {{0}}; // initialize the array where i will store the history of ythe circle centers
-    int j;
-    int j_max = height - 1;
-    int i;
-    int i_max = width - 1;
-    int pos;
-    int k;
-    int xi;
-    int yi;
-    rgb_pixel_t r_color = {0, 0, 255, 255};
-    rgb_pixel_t w_color = {255, 255, 255, 255};
-    int a;
-    int b;
-
-
-
+    int history[80][30] = {{0}}; // initialize the array where i will store the history of the circle centers
+    int j; // declare the iteration variable 
+    int j_max = height - 1; // initialize the maximum of the iteration variable
+    int i; // declare the iteration variable 
+    int i_max = width - 1; // initialize the maximum of the iteration variable
     
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
-
-    logger(log_pn_processB, "log legend: 0001= created a blanck picture for the size   0010= opened the shared memory   0011= mapped the shared memory   0100= opened the semaphore1   0101= opened the semaphore 2   0110= decremented the semaphore2   0111= found the circle center   1000= incremented the semaphore 1   1001= printed the window   1010= signal received to close the process"); // write a log message
+    remove(log_pn_processB); // remove the old log file
+    logger(log_pn_processB, "log legend: 0001= received a closing signal   0010= opened the shared memory   0011= mapped the shared memory   0100= opened the semaphore1   0101= opened the semaphore 2   0110= resized the window   0111= semaphore2 decremented   1000= row data copied   1001= incremented semaphore1   1010= searching the circle center   1011= found the circle center   1100= history displaied on window   the log number with an e in front means the relative operation failed"); // write a log message
     
     // signal menagement to close the processes
     if (signal(SIGTERM, sig_handler) == SIG_ERR) { // check if there is any closure signal
         perror("error receiving the closure signal from the processA in processB"); // checking errors
-        logger(log_pn_processB, "e1010"); // write a error log message
+        logger(log_pn_processB, "e0001"); // write a error log message
     }
     else {
-        logger(log_pn_processB, "1010"); // write a error log message
+        logger(log_pn_processB, "0001"); // write a error log message
     }
-    
-    logger(log_pn_processB, "0001"); // write a log message
 
     // Initialize UI
     init_console_ui();
@@ -148,12 +129,6 @@ int main(int argc, char const *argv[]) {
             logger(log_pn_processB, "0011"); // write a log message
         }
     }
-
-    /*bmp_header_t al = bmp_get_header(shm_ptr);
-    int a = al.filesz;
-    char arr2[5];
-    sprintf(&arr2[0], "shm%i", a);
-    logger(log_pn_processB, arr2);*/
 
     // open the semaphores:
     sem1 = sem_open(SEMAPHORE1, 0); // opening the semaphore1 with a starting valeu of 1
@@ -184,6 +159,7 @@ int main(int argc, char const *argv[]) {
 
         // If user resizes screen, re-draw UI...
         if(cmd == KEY_RESIZE) {
+            logger(log_pn_processB, "0110"); // write a error log message
             if(first_resize) {
                 first_resize = FALSE;
             }
@@ -197,34 +173,28 @@ int main(int argc, char const *argv[]) {
                 sem2_r = sem_wait(sem2); // get the exclusive access to the shared memory
                 if (sem2_r < 0) {
                     perror("error in the wait function on the semaphore 2 in the processB"); // checking errors
-                    logger(log_pn_processB, "e0110"); // write a log message
+                    logger(log_pn_processB, "e0111"); // write a log message
                 }
                 else {
-                    logger(log_pn_processB, "0110"); // write a log message
-                    mvaddch(10, 10, '+'); // print a plus in the window
-                    
-                    /*int a = i_max;
-                    int b = j_max;
-                    char arr2[5];
-                    sprintf(&arr2[0], "i%ij%i", a, b);
-                    logger(log_pn_processB, arr2);
-                    */
+                    logger(log_pn_processB, "0111"); // write a log message
                     
                     for (i = 0; i <= i_max; i++) {
                         image_arr[i][j] = shm_ptr[i];
                     }
-                    
+                    logger(log_pn_processB, "1000"); // write a error log message
                     
                     sem1_r = sem_post(sem1); // notify processA that i've completed the work and he can read
                     if (sem1_r < 0) {
                         perror("error in the post function on the semaphore 1 in the processB"); // checking errors
-                        logger(log_pn_processB, "e1000"); // write a log message
+                        logger(log_pn_processB, "e1001"); // write a log message
                     }
                     else {
-                        logger(log_pn_processB, "1000"); // write a log message
+                        logger(log_pn_processB, "1001"); // write a log message
                     }
                 }
             }
+
+            logger(log_pn_processB, "1010"); // write a error log message
             for (j = 0; j <= j_max; j++) {
                 for (i = 0; i <= i_max; i++) {
                     if (image_arr[i][j] == 1) {
@@ -234,14 +204,14 @@ int main(int argc, char const *argv[]) {
                         c_counter = 0;
                     }
                     if (c_counter == 60) {
-                        xc = ((((i + 1) - 30) - 10) / 20)-1;
-                        yc = (((j + 1) - 10) / 20)-1;
+                        xc = round((i - 30) / 20);
+                        yc = j / 20;
                         history[xc][yc] = 1;
                         goto found;
                     }
                 }
             }
-            found: logger(log_pn_processB, "1001"); // write a log message
+            found: logger(log_pn_processB, "1011"); // write a log message
 
             for (j = 0; j <= 30; j++) {
                 for (i = 0; i <= 80; i++) {
@@ -250,6 +220,7 @@ int main(int argc, char const *argv[]) {
                     }
                 }
             }
+            logger(log_pn_processB, "1100"); // write a error log message
             
             refresh();
             sleep(1);

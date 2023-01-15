@@ -93,8 +93,10 @@ int main() {
   int * s_rcv_p = &s_rcv[0]; // initialize the pointer to the s_rcv array
   ssize_t r_fd_s; // declare the returned valeu of the read function on the signal pipe
   int k; // declaring the returned valeu of the kill function that close processB
-
-  logger(log_pn_master, "log legend: 0001= opened/created the log files folder   0010= spawned the processes   0011= processes have been closed   0100= opened/created the named pipes folder   0101= creating the pipe s   0110= opening the s pipe   0111= readed the pipe s   the log number with an e in front means the relative operation failed"); // write a log message
+  
+  // closure
+  int status[2]; // array where i will put the exit status of all the processes
+  int *status_p = status; // pointer to the previous arrray
   
   // create the directories for the log files and the named pipes:
   if(opendir(log_dir) == NULL) { // try to open the directory to check if it exists
@@ -110,64 +112,83 @@ int main() {
   if(opendir(named_pipes_dir) == NULL) { // try to open the directory to check if it exists
     if (mkdir(named_pipes_dir, named_pipes_dir_mode) < 0) { // create the directory
       perror("error creating the named_pipes directory from master"); // checking errors
-      logger(log_pn_master, "e0100"); // write a log message
+      logger(log_pn_master, "e0010"); // write a log message
     }
     else {
-      logger(log_pn_master, "0100"); // write a log message
+      logger(log_pn_master, "0010"); // write a log message
     }
   }
 
   remove(log_pn_master); // remove the old log file
-
+  logger(log_pn_master, "log legend: 0001= opened/created the log files folder   0010= opened/created the named pipes folder   0011= spawned the processes   0100= created the pipe s   0101= opened the pipe s   0110= readed the pipe s and signal sended   0111= closed the pipe s   1000= unlink the pipe s   1001= wait for the returning status of the processes   the log number with an e in front means the relative operation failed"); // write a log message
+  
   // spawn the processes:
   pid_t pid_procA = spawn("/usr/bin/konsole", arg_list_A);
-  //sleep(1); // wait for the first process to create the shared memory and so on
+  sleep(0.5); // wait for the first process to create the shared memory and so on
   pid_t pid_procB = spawn("/usr/bin/konsole", arg_list_B);
 
   if (pid_procA < 0 && pid_procB < 0) {
-    logger(log_pn_master, "e0010"); // write a log message
+    logger(log_pn_master, "e0011"); // write a log message
   }
   else {
-    logger(log_pn_master, "0010"); // write a log message
+    logger(log_pn_master, "0011"); // write a log message
   }
 
   // create the pipe:
   s_mass_r = mkpipe(s_mass, s_mass_mode); // creating the named pipe for communicate the signal id from the processA to the master
   if (s_mass_r < 0) {
     perror("error creating the pipe s from master"); // checking errors
-    logger(log_pn_master, "e0101"); // write a log message
+    logger(log_pn_master, "e0100"); // write a log message
   }
   else {
-    logger(log_pn_master, "0101"); // write a log message
+    logger(log_pn_master, "0100"); // write a log message
   }
 
   // opening the signal pipe
   fd_s = open(s_mass, O_RDONLY | O_NONBLOCK); // open the pipe s to read on it
   if( fd_s < 0){
       perror("error opening the pipe s from master"); // checking errors
-      logger(log_pn_master, "e0110"); // write a error log message
+      logger(log_pn_master, "e0101"); // write a error log message
   }
   else {
-    logger(log_pn_master, "0110"); // write a log message
+    logger(log_pn_master, "0101"); // write a log message
   }
 
   while(1) {
     r_fd_s = read(fd_s, s_rcv_p, 1);
     if(r_fd_s < 0 && errno != EAGAIN) { 
       perror("error reading the pipe s from master"); // checking errors
-      logger(log_pn_master, "e0111"); // write a error log message
+      logger(log_pn_master, "e0110"); // write a error log message
     }
     else if (r_fd_s > 0){ // otherwise read the signal id
-      logger(log_pn_master, "0111"); // write log message
+      logger(log_pn_master, "0110"); // write log message
       if (s_rcv[0] == 1) { // the inspect is asking to close the processes
         k = kill(pid_procB, SIGTERM); // send the signals
+        break;
       }
     }
   }
-  int status;
-  waitpid(pid_procA, &status, 0);
-  waitpid(pid_procB, &status, 0);
-  logger(log_pn_master, "0011"); // write a log message
-  printf ("Main program exiting with status %d\n", status);
+
+  if (close(fd_s) < 0) {
+    perror("error closing the pipe s from master"); // checking errors
+    logger(log_pn_master, "e0111"); // write a error log message
+  }
+  else {
+    logger(log_pn_master, "0111"); // write a error log message
+  }
+  
+  if (unlink(s_mass) < 0) {
+    perror("error unlinking the pipe s from master"); // checking errors
+    logger(log_pn_master, "e1000"); // write a error log message
+  }
+  else {
+    logger(log_pn_master, "1000"); // write a error log message
+  }
+
+  waitpid(pid_procA, status_p, 0); // wait for the proces to be closed and return the status
+  waitpid(pid_procB, status_p+1, 0); // wait for the proces to be closed and return the status
+  
+  logger(log_pn_master, "1001"); // write a log message
+  printf ("the following process exited with the following errors: processA %d; processB %d;", status[0], status[1]); // print why the processes where closed
   return 0;
 }
