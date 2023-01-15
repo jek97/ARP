@@ -88,20 +88,18 @@ int main(int argc, char const *argv[]) {
     int height = 600; // Height of the image (in pixels)
     int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
     image = bmp_create(width, height, depth); // create the image
-    shm_size = width; // set the shared memory dimension
+    shm_size = 6400; // set the shared memory dimension
 
     // declare some internal variable:
-    int image_arr_size = width * height;
-    int image_arr[image_arr_size]; // initialize the vector that will hold the image
-    int * image_arr_ptr = &image_arr[0]; // initialize the pointer to the array
+    int image_arr[width][height]; // initialize the vector that will hold the image
     int c_counter = 0; // intialize the counter used to find the circle center 
     int xc; // declare the position of the center of the circle along x
     int yc; // declare the position of the center of the circle along y
     int history[80][30] = {{0}}; // initialize the array where i will store the history of ythe circle centers
     int j;
-    int j_max = 600;
+    int j_max = height - 1;
     int i;
-    int i_max = 1600;
+    int i_max = width - 1;
     int pos;
     int k;
     int xi;
@@ -195,21 +193,13 @@ int main(int argc, char const *argv[]) {
         }
 
         else {
-            int sem2_check1;
-            int sem2_check2;
-            int sem1_check1;
-            int sem1_check2;
-            //sem_getvalue(sem2, &sem2_check1);
-            for (j = 1; j <= j_max; j++) {
+            for (j = 0; j <= j_max; j++) {
                 sem2_r = sem_wait(sem2); // get the exclusive access to the shared memory
                 if (sem2_r < 0) {
                     perror("error in the wait function on the semaphore 2 in the processB"); // checking errors
                     logger(log_pn_processB, "e0110"); // write a log message
-                    sem_getvalue(sem2, &sem2_check2);
-                    sem_getvalue(sem1, &sem1_check1);
                 }
                 else {
-                    sem_getvalue(sem2, &sem2_check2);
                     logger(log_pn_processB, "0110"); // write a log message
                     mvaddch(10, 10, '+'); // print a plus in the window
                     
@@ -220,13 +210,11 @@ int main(int argc, char const *argv[]) {
                     logger(log_pn_processB, arr2);
                     */
                     
-                    for (i = 1; i <= i_max; i++) {
-                        pos = i - 1 + j * i_max;
-                        image_arr[pos] = shm_ptr[i-1];
+                    for (i = 0; i <= i_max; i++) {
+                        image_arr[i][j] = shm_ptr[i];
                     }
                     
                     
-                    sem_getvalue(sem1, &sem1_check1);
                     sem1_r = sem_post(sem1); // notify processA that i've completed the work and he can read
                     if (sem1_r < 0) {
                         perror("error in the post function on the semaphore 1 in the processB"); // checking errors
@@ -237,39 +225,7 @@ int main(int argc, char const *argv[]) {
                     }
                 }
             }
-            for (k = 0; k <= image_arr_size; k ++) {
-                xi = k + 1 - round((k + 1) / width) * width;
-                yi = round((k + 1) / width);
-                if (image_arr[k] == 1) {
-                    bmp_set_pixel(image, xi, yi, r_color);
-                    c_counter++;
-                }
-                else {
-                    bmp_set_pixel(image, xi, yi, w_color);
-                    c_counter = 0;
-                }
-                if ( c_counter == 60) {
-                    xc = ((xi - 40) / 20) - 1;
-                    yc = ((yi - 10) / 20) - 1;
-                    history[xc][yc] = 1;
-                }
-            }
-            for (a = 0; a <= 29; a++) {
-                for (b = 0; b <= 79; b++) {
-                    if (history[a][b] == 1) {
-                        mvaddch((a+1), (b+1), '+');
-                    }
-                }
-            }
-
             
-
-            sem_getvalue(sem1, &sem1_check2);
-            
-            char arr[13];
-            sprintf(&arr[0], "21%i22%i11%i12%i", sem2_check1, sem2_check2, sem1_check1, sem1_check2);
-            logger(log_pn_processB, arr); // write a log message
-
             
             logger(log_pn_processB, "1001"); // write a log message
             refresh();

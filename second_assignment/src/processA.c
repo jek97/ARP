@@ -40,25 +40,6 @@ void draw_circle_shm(bmpfile_t *bmp, int xc, int yc, int r, rgb_pixel_t color) {
     }
 }
 
-void write_shm(bmpfile_t *bmp, int * shm_ptr) {
-    int pos = 0; // declaring the position in the array
-    int i_max = bmp_get_width(bmp); // initialize the number of row of the picture
-    int j_max = bmp_get_height(bmp); // initialize the number of column of the picture
-    rgb_pixel_t *p; // declaring the pixel variable
-    for (int i = 1; i <= i_max; i++) { // for all the image points
-        for (int j = 1; j <= j_max; j++) {
-            p = bmp_get_pixel(bmp, i, j);
-            pos = i + ((j - 1) * i_max) -1;
-            if (p->red == 255 && p->blue == 0 && p->green == 0) {
-                shm_ptr[pos] = 1;
-            }
-            else {
-                shm_ptr[pos] = 0;
-            }
-        }
-    }
-    pos = 0;
-}
 
 int logger(const char * log_pathname, char log_msg[]) {
   int log_fd; // declare the log file descriptor
@@ -141,13 +122,14 @@ int main(int argc, char *argv[]) {
     int height = 600; // Height of the image (in pixels)
     int depth = 4; // Depth of the image (1 for greyscale images, 4 for colored images)
     image = bmp_create(width, height, depth); // create the image
-    shm_size = width; // set the shared memory dimension
+    shm_size = 6400; // set the shared memory dimension
     int pos = 0; // declaring the position in the array
     int i = 1;
-    int i_max = width; // initialize the number of row of the picture
+    int i_max = width - 1; // initialize the number of row of the picture
     int j;
-    int j_max = height; // initialize the number of column of the picture
+    int j_max = height - 1; // initialize the number of column of the picture
     rgb_pixel_t *p; // declaring the pixel variable
+    int row[width];
     logger(log_pn_processA, "0001"); // write a log message
 
     // create the shared memory:
@@ -294,10 +276,31 @@ int main(int argc, char *argv[]) {
             xc_shm = (20 * xc_w)+10;
             yc_shm = (20 * yc_w)+10;
 
+            logger(log_pn_processA, "c"); // write a log message
+
             clear_picture_shm(image); // clear the shared memory picture from previous circles
             draw_circle_shm(image, xc_shm, yc_shm, rc_shm, c_color); // draw the new circle
+            logger(log_pn_processA, "d"); // write a log message
 
-            for (j = 1; j <= j_max; j++) {
+            for (j = 0; j <= j_max; j++) {
+
+                for (i = 0; i <= i_max; i++) {
+                    p = bmp_get_pixel(image, i, j);
+                    if (p->red == 255 && p->blue == 0 && p->green == 0) {
+                        row[i] = 1;
+                    }
+                    else {
+                        row[i] = 0;
+                    }
+                }
+                
+                int a = sizeof(row);
+                char arr2[5];
+                sprintf(&arr2[0], "row%i", a);
+                logger(log_pn_processA, arr2);
+                
+                logger(log_pn_processA, "a"); // write a log message
+                
                 sem1_r = sem_wait(sem1); // get the exclusive access to the shared memory
                 if (sem1_r < 0) {
                     perror("error in the wait function on the semaphore 1 in the processA"); // checking errors
@@ -305,17 +308,11 @@ int main(int argc, char *argv[]) {
                 }
                 else {
                     logger(log_pn_processA, "1001"); // write a log message
-                    
-                    for (i = 1; i <= i_max; i++) {
-                        p = bmp_get_pixel(image, i, j);
-                        pos = i + (j * i_max) - 1;
-                        if (p->red == 255 && p->blue == 0 && p->green == 0) {
-                            shm_ptr[pos] = 1;
-                        }
-                        else {
-                            shm_ptr[pos] = 0;
-                        }
-                    }
+
+                    for (i = 0; i <= i_max; i++) {
+                        shm_ptr[i] = row[i];
+                    }       
+                    logger(log_pn_processA, "b"); // write a log message          
                 
                     logger(log_pn_processA, "1010"); // write a log message
                     sem2_r = sem_post(sem2); // notify processB that i've completed the work and he can read
