@@ -225,9 +225,32 @@ int main(int argc, char const *argv[]) {
                     }
                 }
             }
+            for (j = 0; j <= j_max; j++) {
+                for (i = 0; i <= i_max; i++) {
+                    if (image_arr[i][j] == 1) {
+                        c_counter++;
+                    }
+                    else {
+                        c_counter = 0;
+                    }
+                    if (c_counter == 60) {
+                        xc = ((((i + 1) - 30) - 10) / 20)-1;
+                        yc = (((j + 1) - 10) / 20)-1;
+                        history[xc][yc] = 1;
+                        goto found;
+                    }
+                }
+            }
+            found: logger(log_pn_processB, "1001"); // write a log message
+
+            for (j = 0; j <= 30; j++) {
+                for (i = 0; i <= 80; i++) {
+                    if (history[i][j] == 1){
+                        mvaddch(j+1, i+1, '+');
+                    }
+                }
+            }
             
-            
-            logger(log_pn_processB, "1001"); // write a log message
             refresh();
             sleep(1);
         }
