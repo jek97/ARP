@@ -27,7 +27,7 @@ And the *libbitmap* library, following the steps:
 4. Run ```make install``` to install the programs and any data files and documentation.
 5. Upon completing the installation, check that the files have been properly installed by navigating to ```/usr/local/lib```, where you should find the ```libbmp.so``` shared library ready for use.
 6. In order to properly compile programs which use the *libbitmap* library, you first need to notify the **linker** about the location of the shared library. To do that, you can simply add the following line at the end of your ```.bashrc``` file:
-``export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" ```
+```export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" ```
 ## Base Project Structure:
 -------------------------------------
 Base project structure for the second Advanced and Robot Porgramming (ARP) assignment. The project provides the basic functionalities for the two processes, both of which are implemented through the ncurses library as simple GUIs and the libbitmap to work with images. In particular, the repository is organized as follows:
