@@ -124,7 +124,7 @@ int main() {
   
   // spawn the processes:
   pid_t pid_procA = spawn("/usr/bin/konsole", arg_list_A);
-  sleep(0.5); // wait for the first process to create the shared memory and so on
+  sleep(0.8); // wait for the first process to create the shared memory and so on
   pid_t pid_procB = spawn("/usr/bin/konsole", arg_list_B);
 
   if (pid_procA < 0 && pid_procB < 0) {
@@ -163,7 +163,7 @@ int main() {
     else if (r_fd_s > 0){ // otherwise read the signal id
       logger(log_pn_master, "0110"); // write log message
       if (s_rcv[0] == 1) { // the inspect is asking to close the processes
-        k = kill(pid_procB, SIGTERM); // send the signals
+        k = kill(pid_procB, SIGUSR1); // send the signals
         break;
       }
     }

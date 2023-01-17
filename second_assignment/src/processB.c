@@ -101,7 +101,7 @@ int main(int argc, char const *argv[]) {
     logger(log_pn_processB, "log legend: 0001= received a closing signal   0010= opened the shared memory   0011= mapped the shared memory   0100= opened the semaphore1   0101= opened the semaphore 2   0110= resized the window   0111= semaphore2 decremented   1000= row data copied   1001= incremented semaphore1   1010= searching the circle center   1011= found the circle center   1100= history displaied on window   the log number with an e in front means the relative operation failed"); // write a log message
     
     // signal menagement to close the processes
-    if (signal(SIGTERM, sig_handler) == SIG_ERR) { // check if there is any closure signal
+    if (signal(SIGUSR1, sig_handler) == SIG_ERR) { // check if there is any closure signal
         perror("error receiving the closure signal from the processA in processB"); // checking errors
         logger(log_pn_processB, "e0001"); // write a error log message
     }

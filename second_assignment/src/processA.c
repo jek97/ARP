@@ -286,7 +286,6 @@ int main(int argc, char *argv[]) {
             else {
                 logger(log_pn_processA, "010100"); // write a error log message
             }
-            
             if (raise(SIGKILL) != 0) { // proces commit suicide
                 perror("error suiciding the processA"); // checking errors
                 logger(log_pn_processA, "e010101"); // write a error log message
