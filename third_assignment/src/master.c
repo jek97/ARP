@@ -81,6 +81,8 @@ int main() {
   const char * log_pn_master = "./bin/log_files/master.txt"; // initialize the log file path name
   
   // spawning processes variables
+  pid_t pid_procA; 
+  pid_t pid_procB;
   char * arg_list_A[] = { "/usr/bin/konsole", "-e", "./bin/processA", NULL }; // normal mode
   char * arg_list_As[] = { "/usr/bin/konsole", "-e", "./bin/processAs", NULL }; // server mode
   char * arg_list_Ac[] = { "/usr/bin/konsole", "-e", "./bin/processAc", NULL }; // client mode
@@ -135,25 +137,28 @@ int main() {
   switch (t) {
     case 0: // processA normal mode
     printf("normal mode");
-    pid_t pid_procA = spawn("/usr/bin/konsole", arg_list_A); // open the related process
+    pid_procA = spawn("/usr/bin/konsole", arg_list_A); // open the related process
     logger(log_pn_master, "1010"); // write a log message
     sleep(0.8); // wait for the first process to create the shared memory and so on
-    pid_t pid_procB = spawn("/usr/bin/konsole", arg_list_B);
+    pid_procB = spawn("/usr/bin/konsole", arg_list_B);
+    break;
 
     case 1: // processA server mode
     printf("server mode");
-    pid_t pid_procA = spawn("/usr/bin/konsole", arg_list_As); // open the related process
+    pid_procA = spawn("/usr/bin/konsole", arg_list_As); // open the related process
     logger(log_pn_master, "1011"); // write a log message
+    break;
 
     case 2: // processA client mode
     printf("client mode");
-    pid_t pid_procA = spawn("/usr/bin/konsole", arg_list_Ac); // open the related process
+    pid_procA = spawn("/usr/bin/konsole", arg_list_Ac); // open the related process
     logger(log_pn_master, "1100"); // write a log message
     sleep(0.8); // wait for the first process to create the shared memory and so on
-    pid_t pid_procB = spawn("/usr/bin/konsole", arg_list_B);
+    pid_procB = spawn("/usr/bin/konsole", arg_list_B);
+    break;
   }
   
-  if (pid_procA < 0 && pid_procB < 0) {
+  if (pid_procA < 0) {
     logger(log_pn_master, "e0011"); // write a log message
   }
   else {

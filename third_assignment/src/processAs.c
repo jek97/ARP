@@ -70,26 +70,26 @@ int logger(const char * log_pathname, char log_msg[]) {
 
 int main(int argc, char *argv[]) {
     // loger variable
-    const char * log_pn_processA = "./bin/log_files/processA.txt"; // initialize the log file path name
+    const char * log_pn_processA = "./bin/log_files/processAs.txt"; // initialize the log file path name
 
     // declare some variables for the socket:
     int sockfd, newsockfd, clilen, n; // declare the socket file descriptors, the size of the address of the client and the character readed and writed on the socket
-    int portno = 0; // Declare the port number (to decide)
+    int portno = 50000; // Declare the port number (to decide)
     struct sockaddr_in serv_addr, cli_addr; // structure to store the server and client internet address
-    char out_buf[2]; // declare the buffer in output
+    char out_buf[5]; // declare the buffer in output
     int w_pA; // declare the returned valeu of the write function on the socket
 
     remove(log_pn_processA); // remove the old log file
-    logger(log_pn_processA, "log legend: 000001= opened the s pipe   000010= created the blanck picture   000011= opened the shared memory   000100= truncated the shared memory   000101= mapped the shared memory   000110= opened the semaphore1   000111= opened the semaphore 2   001000= initialized the semaphore1   001001= initialized the semaphore2   001010= window resized   001011= end button pressed   001100= closing message sent to the master   001101= closed the pipe s   001110= unlinked the pipe s   001111= unmapped the shared memory   010000= unlinked the shared memory   010001= closed the semaphore1   010010= unlinked the semaphore1   010011= closed the semaphore2   010100= unlinked the semaphore2   010101= processA committed suicide   010110= saved a snapshot of the shared memory   010111= circle moved   011000= drawed the new circle   011001= filled the row array   011010= decremented the semaphore1   011011= sended the row   011100= incremented the sempahore2   011101= opened the socket   011110= binding the socket   011111= socket connection enstablished   100000= write the end key on the socket   the log number with an e in front means the relative operation failed"); // write a log message
+    logger(log_pn_processA, "log legend: 0001= opened the socket   0010= binded the socket   0011= accepted the connection   0100= resize of the window   0101= closure of the processes   0110= write the closure key on the socket   0111= proces commited suicide   1000= written the print command on the socket   1001= one arrow key pressed   1010= wrote the left key on the socket   1011= wrote the right key on the socket   1100= wrote the up key on the socket   1101= wrote the down key on the socket   the log number with an e in front means the relative operation failed"); // write a log message
 
     // create the socket:
     sockfd = socket(AF_INET, SOCK_STREAM, 0); // open the socket
     if (sockfd < 0) {
         perror("error opening the socket from processA"); // checking errors
-        logger(log_pn_processA, "e011101"); // write a log message
+        logger(log_pn_processA, "e0001"); // write a log message
     }
     else {
-        logger(log_pn_processA, "011101"); // write a log message
+        logger(log_pn_processA, "0001"); // write a log message
     }
 
     bzero((char *) &serv_addr, sizeof(serv_addr)); // set all the values of the server address buffer equal to zero
@@ -99,22 +99,22 @@ int main(int argc, char *argv[]) {
     
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) { // binding the socket to the port
         perror("error binding the socket from processA"); // checking errors
-        logger(log_pn_processA, "e011110"); // write a log message
+        logger(log_pn_processA, "e0010"); // write a log message
     }
     else {
-        logger(log_pn_processA, "011110"); // write a log message
+        logger(log_pn_processA, "0010"); // write a log message
     }
 
     listen(sockfd, 5); // listen for connections (max 5)
     clilen = sizeof(cli_addr);
-    newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, clilen); // enstablish the connection with the client
+    newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen); // enstablish the connection with the client
 
     if (newsockfd < 0) {
         perror("error waiting from connections in processA"); // checking errors
-        logger(log_pn_processA, "e011111"); // write a log message
+        logger(log_pn_processA, "e0011"); // write a log message
     }
     else {
-        logger(log_pn_processA, "011111"); // write a log message
+        logger(log_pn_processA, "0011"); // write a log message
     }
 
     // Utility variable to avoid trigger resize event on launch
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
 
         // If user resizes screen, re-draw UI...
         if(cmd == KEY_RESIZE) {
-            logger(log_pn_processA, "001010"); // write a error log message
+            logger(log_pn_processA, "0100"); // write a error log message
             if(first_resize) {
                 first_resize = FALSE;
             }
@@ -141,23 +141,23 @@ int main(int argc, char *argv[]) {
         }
 
         else if (cmd == KEY_END) {
-            logger(log_pn_processA, "001011"); // write a error log message
+            logger(log_pn_processA, "0101"); // write a error log message
             sprintf(out_buf, "%i", KEY_END);
             w_pA = write(newsockfd, out_buf, sizeof(out_buf)); // write the related key on the socket
             if (w_pA <= 0) {
                 perror("error tring to write on the socket the end command from porcessA"); // checking errors
-                logger(log_pn_processA, "e100000"); // write a error log message
+                logger(log_pn_processA, "e0110"); // write a error log message
             }
             else {
-                logger(log_pn_processA, "100000"); // write a error log message
+                logger(log_pn_processA, "0110"); // write a error log message
             }
 
             if (raise(SIGKILL) != 0) { // proces commit suicide
                 perror("error suiciding the processA"); // checking errors
-                logger(log_pn_processA, "e010101"); // write a error log message
+                logger(log_pn_processA, "e0111"); // write a error log message
             }
             else {
-                logger(log_pn_processA, "010101"); // write a error log message
+                logger(log_pn_processA, "0111"); // write a error log message
             }
         }
 
@@ -171,10 +171,10 @@ int main(int argc, char *argv[]) {
                     w_pA = write(newsockfd, out_buf, sizeof(out_buf)); // write the related message on the socket
                     if (w_pA <= 0) {
                         perror("error tring to write on the socket the print command from porcessA"); // checking errors
-                        logger(log_pn_processA, "e100000"); // write a error log message
+                        logger(log_pn_processA, "e1000"); // write a error log message
                     }
                     else {
-                        logger(log_pn_processA, "100000"); // write a error log message
+                        logger(log_pn_processA, "1000"); // write a error log message
                     }
                     sleep(1);
                     for(int j = 0; j < COLS - BTN_SIZE_X - 2; j++) {
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
 
         // If input is an arrow key, move circle accordingly...
         else if(cmd == KEY_LEFT || cmd == KEY_RIGHT || cmd == KEY_UP || cmd == KEY_DOWN) {
-            logger(log_pn_processA, "010111"); // write a error log message
+            logger(log_pn_processA, "1001"); // write a error log message
             move_circle(cmd); // move the circle in the ncurse window
             draw_circle(); // draw such
             
@@ -195,10 +195,10 @@ int main(int argc, char *argv[]) {
                 w_pA = write(newsockfd, out_buf, sizeof(out_buf)); // write the related message on the socket
                 if (w_pA <= 0) {
                     perror("error tring to write on the socket the left command from porcessA"); // checking errors
-                    logger(log_pn_processA, "e100000"); // write a error log message
+                    logger(log_pn_processA, "e1010"); // write a error log message
                 }
                 else {
-                    logger(log_pn_processA, "100000"); // write a error log message
+                    logger(log_pn_processA, "1010"); // write a error log message
                 }
             }
             else if (cmd == KEY_RIGHT) {
@@ -206,10 +206,10 @@ int main(int argc, char *argv[]) {
                 w_pA = write(newsockfd, out_buf, sizeof(out_buf)); // write the related message on the socket
                 if (w_pA <= 0) {
                     perror("error tring to write on the socket the right command from porcessA"); // checking errors
-                    logger(log_pn_processA, "e100000"); // write a error log message
+                    logger(log_pn_processA, "e1011"); // write a error log message
                 }
                 else {
-                    logger(log_pn_processA, "100000"); // write a error log message
+                    logger(log_pn_processA, "1011"); // write a error log message
                 }
             }
             else if (cmd == KEY_UP) {
@@ -217,10 +217,10 @@ int main(int argc, char *argv[]) {
                 w_pA = write(newsockfd, out_buf, sizeof(out_buf)); // write the related message on the socket
                 if (w_pA <= 0) {
                     perror("error tring to write on the socket the up command from porcessA"); // checking errors
-                    logger(log_pn_processA, "e100000"); // write a error log message
+                    logger(log_pn_processA, "e1100"); // write a error log message
                 }
                 else {
-                    logger(log_pn_processA, "100000"); // write a error log message
+                    logger(log_pn_processA, "1100"); // write a error log message
                 }
             }
             else if (cmd == KEY_DOWN) {
@@ -228,13 +228,12 @@ int main(int argc, char *argv[]) {
                 w_pA = write(newsockfd, out_buf, sizeof(out_buf)); // write the related message on the socket
                 if (w_pA <= 0) {
                     perror("error tring to write on the socket the down command from porcessA"); // checking errors
-                    logger(log_pn_processA, "e100000"); // write a error log message
+                    logger(log_pn_processA, "e1101"); // write a error log message
                 }
                 else {
-                    logger(log_pn_processA, "100000"); // write a error log message
+                    logger(log_pn_processA, "1101"); // write a error log message
                 }
             }
-            
             
         }
     }

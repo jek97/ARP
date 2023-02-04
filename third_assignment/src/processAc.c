@@ -71,7 +71,7 @@ int logger(const char * log_pathname, char log_msg[]) {
 
 int main(int argc, char *argv[]) {
     // loger variable
-    const char * log_pn_processA = "./bin/log_files/processA.txt"; // initialize the log file path name
+    const char * log_pn_processA = "./bin/log_files/processAc.txt"; // initialize the log file path name
 
     // declaring some variables for the shared memory:
     const char * shm = "/shm"; // initialize the pathname of the shared memory
@@ -117,15 +117,16 @@ int main(int argc, char *argv[]) {
     
     // declare some variables for the socket:
     int sockfd, newsockfd, clilen, n; // declare the socket file descriptors, the size of the address of the client and the character readed and writed on the socket
-    int portno = 0; // Declare the port number (to decide)
+    int portno = 50000; // Declare the port number (to decide)
     struct sockaddr_in serv_addr; // structure to store the server internet address
-    const char * server_nam; // name of the server (to decide)
+    const char * server_nam = "Lazymachine"; // name of the server (to decide)
     struct hostent * server; // pointer to a struct containing the alias of the server
     int r_pB; // declare the returned variable of the read function on the socket
-    char in_buf[2]; // declare the buffer in input
+    char in_buf[5]; // declare the buffer in input
+    int in = 0; // initialize the variable where i will store the valeu received
 
     remove(log_pn_processA); // remove the old log file
-    logger(log_pn_processA, "log legend: 000001= opened the s pipe   000010= created the blanck picture   000011= opened the shared memory   000100= truncated the shared memory   000101= mapped the shared memory   000110= opened the semaphore1   000111= opened the semaphore 2   001000= initialized the semaphore1   001001= initialized the semaphore2   001010= window resized   001011= end button pressed   001100= closing message sent to the master   001101= closed the pipe s   001110= unlinked the pipe s   001111= unmapped the shared memory   010000= unlinked the shared memory   010001= closed the semaphore1   010010= unlinked the semaphore1   010011= closed the semaphore2   010100= unlinked the semaphore2   010101= processA committed suicide   010110= saved a snapshot of the shared memory   010111= circle moved   011000= drawed the new circle   011001= filled the row array   011010= decremented the semaphore1   011011= sended the row   011100= incremented the sempahore2   the log number with an e in front means the relative operation failed"); // write a log message
+    logger(log_pn_processA, "log legend: 000001= opened the s pipe   000010= created the blanck picture   000011= opened the shared memory   000100= truncated the shared memory   000101= mapped the shared memory   000110= opened the semaphore1   000111= opened the semaphore 2   001000= initialized the semaphore1   001001= initialized the semaphore2   001010= window resized   001011= end button pressed   001100= closing message sent to the master   001101= closed the pipe s   001110= unlinked the pipe s   001111= unmapped the shared memory   010000= unlinked the shared memory   010001= closed the semaphore1   010010= unlinked the semaphore1   010011= closed the semaphore2   010100= unlinked the semaphore2   010101= processA committed suicide   010110= saved a snapshot of the shared memory   010111= circle moved   011000= drawed the new circle   011001= filled the row array   011010= decremented the semaphore1   011011= sended the row   011100= incremented the sempahore2   011101= opening the socket   011110= get host data   011111= connect to server   100000= readed the socket   the log number with an e in front means the relative operation failed"); // write a log message
 
     // open the pipe:
     s_out = open(s, O_WRONLY); // open the pipe s to write on it
@@ -214,10 +215,10 @@ int main(int argc, char *argv[]) {
     server = gethostbyname(server_nam); // fill the struct with the server data
     if (server == NULL) {
         perror("error obtaining the host data from processB"); // checking errors
-        logger(log_pn_processA, "e011101"); // write a log message
+        logger(log_pn_processA, "e011110"); // write a log message
     }
     else {
-        logger(log_pn_processA, "e011101"); // write a log message
+        logger(log_pn_processA, "011110"); // write a log message
     }
 
     bzero((char *) &serv_addr, sizeof(serv_addr)); // set all the values of the server address buffer equal to zero
@@ -225,12 +226,12 @@ int main(int argc, char *argv[]) {
     bcopy((char *) server -> h_addr_list, (char *) &serv_addr.sin_addr.s_addr, server -> h_length); // set the fields in serv_addr
     serv_addr.sin_port = portno; // set the fields in serv_addr
 
-    if (connect(sockfd, &serv_addr, sizeof(serv_addr)) < 0) { // connecting to server
+    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) { // connecting to server
         perror("error connecting to server from processB"); // checking errors
-        logger(log_pn_processA, "e011101"); // write a log message
+        logger(log_pn_processA, "e011111"); // write a log message
     }
     else {
-        logger(log_pn_processA, "e011101"); // write a log message
+        logger(log_pn_processA, "011111"); // write a log message
     }
     
     // Utility variable to avoid trigger resize event on launch
@@ -253,6 +254,10 @@ int main(int argc, char *argv[]) {
             logger(log_pn_processA, "100000"); // write a error log message
         }
 
+        for (int i = 0; i <= strlen(in_buf); i++) {
+            in = (in * 10) + (int) in_buf[i];
+        }
+
         // If user resizes screen, re-draw UI...
         if(cmd == KEY_RESIZE) {
             logger(log_pn_processA, "001010"); // write a error log message
@@ -264,7 +269,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        else if (in_buf[0] == KEY_END) {
+        else if (in == KEY_END) {
             logger(log_pn_processA, "001011"); // write a error log message
             w_s_out = write(s_out, s_snd_p, 1); // writing the signal id on the pipe
             if(w_s_out <= 0) { 
@@ -348,7 +353,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Else, if user presses print button...
-        else if(in_buf[0] == "p") {
+        else if(in_buf == "p") {
             mvprintw(LINES - 1, 1, "Print button pressed");
             refresh();
             bmp_save(image, shm_snapshot);
@@ -360,8 +365,8 @@ int main(int argc, char *argv[]) {
         }
 
         // If input is an arrow key, move circle accordingly...
-        else if(in_buf[0] == KEY_LEFT || in_buf[0] == KEY_RIGHT || in_buf[0] == KEY_UP || in_buf[0] == KEY_DOWN) {
-            cmd = in_buf[0];
+        else if(in == KEY_LEFT || in == KEY_RIGHT || in == KEY_UP || in == KEY_DOWN) {
+            cmd = in;
             logger(log_pn_processA, "010111"); // write a error log message
             move_circle(cmd); // move the circle in the ncurse window
             draw_circle(); // draw such
