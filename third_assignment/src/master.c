@@ -127,7 +127,7 @@ int main() {
   }
 
   remove(log_pn_master); // remove the old log file
-  logger(log_pn_master, "log legend: 0001= opened/created the log files folder   0010= opened/created the named pipes folder   0011= spawned the processes   0100= created the pipe s   0101= opened the pipe s   0110= readed the pipe s and signal sended   0111= closed the pipe s   1000= unlink the pipe s   1001= wait for the returning status of the processes   1010= open processA in normal mode   1011= open processA in server mode   1100= open processA in client mode   the log number with an e in front means the relative operation failed"); // write a log message
+  logger(log_pn_master, "log legend: 0001= opened/created the log files folder   0010= opened/created the named pipes folder   0011= normal mode choosen and spawned the processes  0100= server mode choosen and spawned the processes   0101= client mode choosen and spowned the processes   0110= created the pipe s   0111= opened the pipe s   1000= readed the pipe s and signal sended   1001= closed the pipe s   1010= unlink the pipe s   1011= wait for the returning status of the processes   the log number with an e in front means the relative operation failed"); // write a log message
   
   // ask for which type of processA open:
   printf("Please press 0 to open the processA in normal mode, 1 to open it in server mode or 2 to open it in client mode"); // ask for witch processA open
@@ -138,41 +138,49 @@ int main() {
     case 0: // processA normal mode
     printf("normal mode");
     pid_procA = spawn("/usr/bin/konsole", arg_list_A); // open the related process
-    logger(log_pn_master, "1010"); // write a log message
     sleep(0.8); // wait for the first process to create the shared memory and so on
     pid_procB = spawn("/usr/bin/konsole", arg_list_B);
+    if (pid_procA < 0 && pid_procB < 0) {
+    logger(log_pn_master, "e0011"); // write a log message
+    }
+    else {
+      logger(log_pn_master, "0011"); // write a log message
+    }
     break;
 
     case 1: // processA server mode
     printf("server mode");
     pid_procA = spawn("/usr/bin/konsole", arg_list_As); // open the related process
-    logger(log_pn_master, "1011"); // write a log message
+    sleep(0.8); // wait for the first process to create the shared memory and so on
+    pid_procB = spawn("/usr/bin/konsole", arg_list_B);
+    if (pid_procA < 0 && pid_procB < 0) {
+    logger(log_pn_master, "e0100"); // write a log message
+    }
+    else {
+      logger(log_pn_master, "0100"); // write a log message
+    }
     break;
 
     case 2: // processA client mode
     printf("client mode");
     pid_procA = spawn("/usr/bin/konsole", arg_list_Ac); // open the related process
-    logger(log_pn_master, "1100"); // write a log message
-    sleep(0.8); // wait for the first process to create the shared memory and so on
-    pid_procB = spawn("/usr/bin/konsole", arg_list_B);
+    if (pid_procA < 0) {
+    logger(log_pn_master, "e0101"); // write a log message
+    }
+    else {
+      logger(log_pn_master, "0101"); // write a log message
+    }
     break;
-  }
-  
-  if (pid_procA < 0) {
-    logger(log_pn_master, "e0011"); // write a log message
-  }
-  else {
-    logger(log_pn_master, "0011"); // write a log message
   }
 
   // create the pipe:
   s_mass_r = mkpipe(s_mass, s_mass_mode); // creating the named pipe for communicate the signal id from the processA to the master
   if (s_mass_r < 0) {
     perror("error creating the pipe s from master"); // checking errors
-    logger(log_pn_master, "e0100"); // write a log message
+    logger(log_pn_master, "e0110"); // write a log message
   }
   else {
-    logger(log_pn_master, "0100"); // write a log message
+    logger(log_pn_master, "0110"); // write a log message
   }
 
   // opening the signal pipe

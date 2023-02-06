@@ -44,9 +44,17 @@ The processA and processB depend on the ncurses and the libbitmap library, that 
 ```
 gcc src/master.c -o bin/master
 ```
-3. for the processA:
+3. for the processA (normal mode):
 ```
 gcc src/processA.c -lbmp -lm -lncurses -pthread -lrt -o bin/processA
+```
+3.1 for the processA (server mode):
+```
+gcc src/processAs.c -lbmp -lm -lncurses -pthread -lrt -o bin/processAs
+```
+3.2 for the processA (client mode):
+```
+gcc src/processAc.c -lbmp -lm -lncurses -pthread -lrt -o bin/processAc
 ```
 4. for the processB:
 ```
@@ -268,3 +276,4 @@ left arrow:37
 up arrow: 38
 right arrow: 39
 down arrow: 40
+oepn first the server then the client
