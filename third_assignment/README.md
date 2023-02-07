@@ -69,6 +69,7 @@ After compiling, you can simply run the master executable, which will be respons
 The simulator is organized in three different processes that work together to simulate the visual inspection system, as we can see from the flowchart below, all the processes have a different purpose and structure that will be analized soon:
 ![program flowchart](./include/flowchart.png "program flowchart")
 ![program flowchart1](./include/flowchart1.png "program flowchart1")
+
 Inside the drawing we can distingush between the **processes**, rapresented by the colored boxes, the **shared memory** rapresented by the yellow box, the **named pipes** rapresented by the black arrows, the **socket** rapresented by the green arrows and the **signals** rapresented by the orange arrows.
 When the master is launched, it first create the directories needed to store the log files *log_files* and the named pipes *named_pipes*, then it will ask the user to choose in which modality open the processA and finally it will launch the other processes and create all the named pipes.
 the choice between the processes A is the following:
