@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
     int portno = 50000; // Declare the port number (to decide)
     struct sockaddr_in serv_addr; // structure to store the server internet address
     struct hostent * server; // pointer to a struct containing the alias of the server
+    const char * server_nam = "LazyMachine"; // name of the server
     char out_buf[2]; // declare the buffer in output
     int w_pA; // declare the returned valeu of the write function on the socket
 
@@ -64,7 +65,7 @@ int main(int argc, char *argv[]) {
         logger(log_pn_processAc, "0001"); // write a log message
     }
 
-    server = gethostbyname("LazyMachine"); // obtaining the host informations
+    server = gethostbyname(server_nam); // obtaining the host informations
     if (server == NULL) {
         perror("error obtaining the host informations in processAc"); // checking errors
         logger(log_pn_processAc, "e0010"); // write a log message
