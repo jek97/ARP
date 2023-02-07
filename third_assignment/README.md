@@ -30,16 +30,16 @@ And the *libbitmap* library, following the steps:
 ```export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" ```
 ## Base Project Structure:
 -------------------------------------
-Base project structure for the second Advanced and Robot Porgramming (ARP) assignment. The project provides the basic functionalities for the two processes, both of which are implemented through the ncurses library as simple GUIs and the libbitmap to work with images. In particular, the repository is organized as follows:
-* the **src** folder contains the source code for the master, processesA and processB processes.
+Base project structure for the Third Advanced and Robot Porgramming (ARP) assignment. The project provides the basic functionalities for the two processes, both of which are implemented through the ncurses library as simple GUIs and the libbitmap to work with images. In particular, the repository is organized as follows:
+* the **src** folder contains the source code for the master, processesA, processAs, processAc and processB processes.
 * the ***include** folder contains all the data structures and methods used within the ncurses framework to build the two GUIs, and the flowchart picture of the project. Unless you want to expand the graphical capabilities of the GUIs (which requires understanding how ncurses works), you can ignore the content of this folder, as it already provides you with all the necessary functionalities.
 * The **bin** folder is where the executable files, together with the log files and named pipes files, are expected to be after compilation.
 * the **out** folder is where the saved snapshot of the shared memory will be stored.
 
 ## Compiling and running the code:
 ------------------------------------
-The processA and processB depend on the ncurses and the libbitmap library, that need to be linked during the compilation step. The steps to compile all the processes are:
-1. move to the folder second_assignment.
+The processA with its variations and processB depend on the ncurses and the libbitmap library, that need to be linked during the compilation step. The steps to compile all the processes are:
+1. move to the folder third_assignment.
 2. for the master proces:
 ```
 gcc src/master.c -o bin/master
@@ -60,18 +60,24 @@ gcc src/processAc.c -lbmp -lm -lncurses -pthread -lrt -o bin/processAc
 ```
 gcc src/processB.c -lbmp -lm -lncurses -pthread -lrt -o bin/processB
 ```
-After compiling, you can simply run the master executable, which will be responsible of spawning all the processes, to do that move on the folder second_assignment from the terminal and type the command:
+After compiling, you can simply run the master executable, which will be responsible of spawning all the processes and will ask the user to choose in which modality open the processA, to do that move on the folder second_assignment from the terminal and type the command:
 ```
 ./bin/master
 ```
 ## Software Architecture and working principle:
 -------------------------------------------
-The simulator is organized in three different processes that work together tosimulate the visual inspection system, as we can see from the flowchart below, all the processes have a different purpose and structure that will be analized soon:
+The simulator is organized in three different processes that work together to simulate the visual inspection system, as we can see from the flowchart below, all the processes have a different purpose and structure that will be analized soon:
 ![program flowchart](./include/flowchart.png "program flowchart")
-Inside the drawing we can distingush between the **processes**, rapresented by the colored boxes, the **shared memory** rapresented by the yellow box, the **named pipes** rapresented by the black arrows and the **signals** rapresented by the orange arrows.
-When the master is launched, it first create the directories needed to store the log files *log_files* and the named pipes *named_pipes*, then it launch the other processes and create all the named pipes.
-Then the processA will display a ncurses window in which a green cross will simulate the object, it's possible to move such object in the window by the arrow keyes of the keyboard; together with the object also a blue button is displaied, by pressing it it's possible to save a snapshot of the shared memory in that moment.
+![program flowchart1](./include/flowchart1.png "program flowchart1")
+Inside the drawing we can distingush between the **processes**, rapresented by the colored boxes, the **shared memory** rapresented by the yellow box, the **named pipes** rapresented by the black arrows, the **socket** rapresented by the green arrows and the **signals** rapresented by the orange arrows.
+When the master is launched, it first create the directories needed to store the log files *log_files* and the named pipes *named_pipes*, then it will ask the user to choose in which modality open the processA and finally it will launch the other processes and create all the named pipes.
+the choice between the processes A is the following:
+1. processA: will open the processA in normal mode, in this case both the processA and processB will be lunched and it will be possible to control the position of the object on the conveyor directly form processA by using the arrows keys.
+2. processAs: will open the processA in server mode, in this case both the processAs and processB will be lunched and it will be possible to control the position of the object on the conveyor by the processAc that will replace the arrows keies of the processA in normal mode sending the command throught the socket, in this mode the process will receive the following character that corresponds to the previous keies: P= print button; E= end button (to close the processes); R, L, U, D= to move the object in order in the right, left, up and down direction.
+3. processAc: will open only the processA in client mode, in this case the processAc will try to connect to the processAs, that could be on the same or another laptop, through an internet connection by the usage of a socket. once connected to it, it will be possible by pressing the arrow keys on the processAc to send the relative command to the processAs.
+Then the processA will display a ncurses window in which a green cross will simulate the object, it's possible to move such object in the window in the different ways described above; together with the object also a blue button is displaied, by pressing it it's possible to save a snapshot of the shared memory in that moment.
 Moreover the processA is equipped with a functionality that allows the user to close the processes by simply press the end button on the keyboard.
+If the user aim is the one to open the processes in server and client mode it's important to luch first the server one (processAs) and only secondary the client one (processAc).
 But let's have a look more in ditails of the processes:
 ## Processes architectures:
 ---------------------------------
@@ -160,7 +166,7 @@ At its beginning the variable needed for the proces are declared of initialized,
 Then first of all the direcories *log_files*, *named_pipes* are checked to see if they already exists and otherwise are created.
 Any previous log_file of the *master* is removed, this choice has been done to maintain the log messages only of the last/current execution of the proces.
 The legend of all the log messages is written in the log file.
-The processes are spawned and the result is controlled and logged.
+The process will ask the user which type of processA to spawn and finally it will spawn them and the result is controlled and logged.
 The pipe is created and opened, the result is checked for errors and a log message is written, and a infinite while loop start.
 In it the named pipe `s` is checked for messages from the *processA*, in case of messages the signal `SIGTERM` is sended to the processB.
 the proces contineus exiting from the while loop and waiting for all the processes to return theyr closure status that will be displayed on the terminal, the *master* close the named pipe `s` and close itself.
@@ -271,9 +277,4 @@ you should experience some weird behavior after launching the application (butto
 Moreover it may happend that one of the two processes crached at the start up, usually the processB, in such case close the processes by pressing together `ctrl+C` and lunch again the master.
 
 
-Note:
-left arrow:37
-up arrow: 38
-right arrow: 39
-down arrow: 40
-oepn first the server then the client
+
