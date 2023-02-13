@@ -357,18 +357,14 @@ int main(int argc, char *argv[]) {
 
         // Else, if user presses print button...
         else if(in_buf[0] == 'P') {
-            if(getmouse(&event) == OK) {
-                if(check_button_pressed(print_btn, &event)) {
-                    mvprintw(LINES - 1, 1, "Print button pressed");
-                    refresh();
-                    bmp_save(image, shm_snapshot); // save a snapshot of the shared memory
-                    logger(log_pn_processAs, "011011"); // write a log message
-                    sleep(1);
-                    for(int j = 0; j < COLS - BTN_SIZE_X - 2; j++) {
-                        mvaddch(LINES - 1, j, ' ');
-                    }
-                }
-            }
+            mvprintw(LINES - 1, 1, "Print button pressed");
+            refresh();
+            bmp_save(image, shm_snapshot); // save a snapshot of the shared memory
+            logger(log_pn_processAs, "011011"); // write a log message
+            sleep(1);
+            for(int j = 0; j < COLS - BTN_SIZE_X - 2; j++) {
+                mvaddch(LINES - 1, j, ' ');
+            }           
         }
 
         // If input is an arrow key, move circle accordingly...
