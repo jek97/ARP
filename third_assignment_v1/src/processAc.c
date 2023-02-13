@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
             logger(log_pn_processAc, "0101"); // write a log message
 
             bzero(out_buf, sizeof(out_buf)); // clean the buffer where i will store the data received by the socket
-            sprintf(out_buf, "%i", cmd); // fulfill the buffer with the new data
+            sprintf(out_buf, "%i", KEY_END); // fulfill the buffer with the new data
             w_pA = write(sockfd, &out_buf[0], sizeof(out_buf)); // writing the message on the socket
             if(w_pA <= 0) { 
                 perror("error writing on the socket the E command from porcessAc"); // checking errors
@@ -131,17 +131,14 @@ int main(int argc, char *argv[]) {
             else {
                 logger(log_pn_processAc, "0111"); // write a error log message
             }
-
-            endwin();
-            return 0;
-
-            /*if (raise(SIGKILL) != 0) { // proces commit suicide
+            
+            if (raise(SIGKILL) != 0) { // proces commit suicide
                 perror("error suiciding the processAc"); // checking errors
                 logger(log_pn_processAc, "e1000"); // write a log message
             }
             else {
                 logger(log_pn_processAc, "1000"); // write a log message
-            }*/
+            }
         }
 
         // Else, if user presses print button...
@@ -152,7 +149,7 @@ int main(int argc, char *argv[]) {
                     refresh();
                     
                     bzero(out_buf, sizeof(out_buf)); // clean the buffer where i will store the data received by the socket
-                    sprintf(out_buf, "P"); // fulfill the buffer with the new data
+                    sprintf(out_buf, "%i", KEY_PRINT); // fulfill the buffer with the new data
                     w_pA = write(sockfd, &out_buf[0], sizeof(out_buf)); // writing the message on the socket
                     if(w_pA <= 0) { 
                         perror("error writing on the socket the command P from porcessAc"); // checking errors
@@ -178,16 +175,16 @@ int main(int argc, char *argv[]) {
 
             bzero(out_buf, sizeof(out_buf)); // clean the buffer where i will store the data received by the socket
             if (cmd == KEY_LEFT) { // checking which arrow key was pressed
-                sprintf(out_buf, "%i", cmd); // fill the buffer in output
+                sprintf(out_buf, "%i", KEY_LEFT); // fill the buffer in output
             }
             else if (cmd == KEY_RIGHT) { // checking which arrow key was pressed
-                sprintf(out_buf, "%i", cmd); // fill the buffer in output
+                sprintf(out_buf, "%i", KEY_RIGHT); // fill the buffer in output
             }
             else if (cmd == KEY_UP) { // checking which arrow key was pressed
-                sprintf(out_buf, "%i", cmd); // fill the buffer in output
+                sprintf(out_buf, "%i", KEY_UP); // fill the buffer in output
             }
             else if (cmd == KEY_DOWN) { // checking which arrow key was pressed
-                sprintf(out_buf, "%i", cmd); // fill the buffer in output
+                sprintf(out_buf, "%i", KEY_DOWN); // fill the buffer in output
             }
             
             w_pA = write(sockfd, &out_buf[0], sizeof(out_buf)); // writing the message on the socket

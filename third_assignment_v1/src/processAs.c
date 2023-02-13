@@ -119,11 +119,6 @@ int main(int argc, char *argv[]) {
     int r_pA; // declare the returned variable of the read function on the socket
     char in_buf[5]; // declare the buffer in input
     int cmd_i; // declare the variable where i will store the command to move the circle
-    char up[5];
-    char down[5];
-    char left[5];
-    char right[5];
-    char end[5];
 
     remove(log_pn_processAs); // remove the old log file
     logger(log_pn_processAs, "log legend: 000001= opened the s pipe   000010= created the blanck picture   000011= opened the shared memory   000100= truncated the shared memory   000101= mapped the shared memory   000110= opened the semaphore1   000111= opened the semaphore 2   001000= initialized the semaphore1   001001= initialized the semaphore2   001010= opened the socket   001011= binded the socket to the port   001100= accepted the communication   001101= readed the socket   001110= window resized   001111= end button pressed   010000= closing message sent to the master   010001= closing the socket   010010= closed the pipe s   010011= unlinked the pipe s   010100= unmapped the shared memory   010101= unlinked the shared memory   010110= closed the semaphore1   010111= unlinked the semaphore1   011000= closed the semaphore2   011001= unlinked the semaphore2   011010= processA committed suicide   011011= saved a snapshot of the shared memory   011100= circle moved   011101= drawed the new circle   011110= filled the row array   011111= decremented the semaphore1   100000= sended the row   100001= incremented the sempahore2   the log number with an e in front means the relative operation failed"); // write a log message
@@ -235,12 +230,6 @@ int main(int argc, char *argv[]) {
         logger(log_pn_processAs, "001100"); // write a log message
     }
 
-    sprintf(up, "%i", KEY_UP);
-    sprintf(down, "%i", KEY_DOWN);
-    sprintf(left, "%i", KEY_LEFT);
-    sprintf(right, "%i", KEY_RIGHT);
-    sprintf(end, "%i", KEY_END);
-
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
@@ -254,7 +243,7 @@ int main(int argc, char *argv[]) {
         int cmd = getch();
 
         bzero(in_buf, sizeof(in_buf)); // clean the receiving buffer from previous data
-        r_pA = read(newsockfd, &in_buf[0], sizeof(in_buf)); // writing the signal id on the pipe
+        r_pA = read(newsockfd, in_buf, sizeof(in_buf)); // writing the signal id on the pipe
         if(r_pA <= 0) { 
             perror("error reading from the socket in porcessAs"); // checking errors
             logger(log_pn_processAs, "e001101"); // write a error log message
@@ -262,7 +251,18 @@ int main(int argc, char *argv[]) {
         else {
             logger(log_pn_processAs, "001101"); // write a error log message
         }
-
+        int in = 0;
+        int a = 0;
+        for (int i = 0; i <= sizeof(in_buf); i++) {
+            if (in_buf[i] == '\0') {
+                break;
+            }
+            else {
+                a = in_buf[i] - '0';
+                in = 10 * in + a;
+            }
+        }
+    
         // If user resizes screen, re-draw UI...
         if(cmd == KEY_RESIZE) {
             logger(log_pn_processAs, "001110"); // write a error log message
@@ -273,8 +273,8 @@ int main(int argc, char *argv[]) {
                 reset_console_ui();
             }
         }
-        
-        else if (strcmp(in_buf, end)) {
+
+        else if (in == KEY_END) {
             logger(log_pn_processAs, "001111"); // write a error log message
             
             w_s_out = write(s_out, s_snd_p, 1); // writing the signal id on the pipe
@@ -357,48 +357,40 @@ int main(int argc, char *argv[]) {
             else {
                 logger(log_pn_processAs, "011001"); // write a error log message
             }
-
-            endwin();
-            return 0;
-            
-            /*if (raise(SIGKILL) != 0) { // proces commit suicide
+            if (raise(SIGKILL) != 0) { // proces commit suicide
                 perror("error suiciding the processAs"); // checking errors
                 logger(log_pn_processAs, "e011010"); // write a error log message
             }
             else {
                 logger(log_pn_processAs, "011010"); // write a error log message
-            }*/
+            }
         }
 
         // Else, if user presses print button...
-        else if(in_buf[0] == 'P') {
-            if(getmouse(&event) == OK) {
-                if(check_button_pressed(print_btn, &event)) {
-                    mvprintw(LINES - 1, 1, "Print button pressed");
-                    refresh();
-                    bmp_save(image, shm_snapshot); // save a snapshot of the shared memory
-                    logger(log_pn_processAs, "011011"); // write a log message
-                    sleep(1);
-                    for(int j = 0; j < COLS - BTN_SIZE_X - 2; j++) {
-                        mvaddch(LINES - 1, j, ' ');
-                    }
-                }
-            }
+        else if(in == KEY_PRINT) {
+            mvprintw(LINES - 1, 1, "Print button pressed");
+            refresh();
+            bmp_save(image, shm_snapshot); // save a snapshot of the shared memory
+            logger(log_pn_processAs, "011011"); // write a log message
+            sleep(1);
+            for(int j = 0; j < COLS - BTN_SIZE_X - 2; j++) {
+                mvaddch(LINES - 1, j, ' ');
+            }            
         }
 
         // If input is an arrow key, move circle accordingly...
-        else if(strcmp(in_buf, left) || strcmp(in_buf, right) || strcmp(in_buf, up) || strcmp(in_buf, down)) {
+        else if(in == KEY_LEFT || in == KEY_RIGHT || in == KEY_UP || in == KEY_DOWN) {
 
-            if (strcmp(in_buf, left)) { // check which arrow message arrived
+            if (in == KEY_LEFT) { // check which arrow message arrived
                 cmd_i = KEY_LEFT; // set the command variable
             }
-            else if (strcmp(in_buf, right)) { // check which arrow message arrived
+            else if (in == KEY_RIGHT) { // check which arrow message arrived
                 cmd_i = KEY_RIGHT; // set the command variable
             }
-            else if (strcmp(in_buf, up)) { // check which arrow message arrived
+            else if (in == KEY_UP) { // check which arrow message arrived
                 cmd_i = KEY_UP; // set the command variable
             }
-            else if (strcmp(in_buf, down)) { // check which arrow message arrived
+            else if (in == KEY_DOWN) { // check which arrow message arrived
                 cmd_i = KEY_DOWN; // set the command variable
             }
 
