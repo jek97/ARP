@@ -164,7 +164,9 @@ int main() {
     case 2: // processA client mode
     printf("client mode");
     pid_procA = spawn("/usr/bin/konsole", arg_list_Ac); // open the related process
-    if (pid_procA < 0) {
+    sleep(0.8); // wait for the first process to create the shared memory and so on
+    pid_procB = spawn("/usr/bin/konsole", arg_list_B);
+    if (pid_procA < 0 && pid_procB < 0) {
     logger(log_pn_master, "e0101"); // write a log message
     }
     else {
