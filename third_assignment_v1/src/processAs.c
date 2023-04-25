@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
 
     // declare some variables for the socket:
     int sockfd, newsockfd, clilen, n; // declare the socket file descriptors, the size of the address of the client and the character readed and writed on the socket
-    int portno = 50000; // Declare the port number (to decide)
+    int portno = 5000; // Declare the port number (to decide)
     struct sockaddr_in serv_addr, cli_addr; // structure to store the server and client internet address
     int r_pA; // declare the returned variable of the read function on the socket
     char in_buf[5]; // declare the buffer in input

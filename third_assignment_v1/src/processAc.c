@@ -114,10 +114,10 @@ int main(int argc, char *argv[]) {
 
     // declare some variables for the socket:
     int sockfd, newsockfd, clilen, n; // declare the socket file descriptors, the size of the address of the client and the character readed and writed on the socket
-    int portno = 50000; // Declare the port number (to decide)
+    int portno = 5000; // Declare the port number (to decide)
     struct sockaddr_in serv_addr; // structure to store the server internet address
     struct hostent * server; // pointer to a struct containing the alias of the server
-    const char * server_nam = "LazyMachine"; // name of the server
+    const char * server_nam = "192.168.0.107"; // name of the server
     char out_buf[5]; // declare the buffer in output
     int w_pA; // declare the returned valeu of the write function on the socket
 
